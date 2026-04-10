@@ -68,6 +68,37 @@ function parseMessage(text: string): {
   return { urls, category, notes };
 }
 
+async function fetchPageTitle(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkBot/1.0)" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Try og:title first, then <title>
+    const ogMatch = html.match(
+      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
+    ) ?? html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i
+    );
+    if (ogMatch) return ogMatch[1].trim();
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) return titleMatch[1].trim();
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 async function sendTelegramMessage(chatId: number, text: string) {
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
@@ -75,7 +106,7 @@ async function sendTelegramMessage(chatId: number, text: string) {
     body: JSON.stringify({
       chat_id: chatId,
       text,
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       disable_web_page_preview: true,
     }),
   });
@@ -112,18 +143,18 @@ serve(async (req) => {
       await sendTelegramMessage(
         chatId,
         "Welcome! Send me a link and I'll save it to your resource library.\n\n" +
-          "*Format:*\n" +
-          "`https://example.com`\n" +
-          "`https://example.com #Tools Great dev tool`\n\n" +
-          `*Categories:* ${VALID_CATEGORIES.join(", ")}\n\n` +
-          `Your chat ID: \`${chatId}\``
+          "<b>Format:</b>\n" +
+          "<code>https://example.com</code>\n" +
+          "<code>https://example.com #Tools Great dev tool</code>\n\n" +
+          `<b>Categories:</b> ${VALID_CATEGORIES.join(", ")}\n\n` +
+          `Your chat ID: <code>${chatId}</code>`
       );
       return new Response("OK", { status: 200 });
     }
 
     // Handle /id command — useful for getting chat ID during setup
     if (text.startsWith("/id")) {
-      await sendTelegramMessage(chatId, `Your chat ID: \`${chatId}\``);
+      await sendTelegramMessage(chatId, `Your chat ID: <code>${chatId}</code>`);
       return new Response("OK", { status: 200 });
     }
 
@@ -137,11 +168,12 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    const saved: string[] = [];
+    const saved: { url: string; title: string }[] = [];
 
     for (const url of urls) {
       const source = inferSource(url);
-      const title = notes || source;
+      const pageTitle = await fetchPageTitle(url);
+      const title = pageTitle || notes || source;
 
       const { error } = await supabase.from("resources").insert({
         title,
@@ -153,18 +185,20 @@ serve(async (req) => {
       });
 
       if (error) {
-        await sendTelegramMessage(chatId, `Failed to save ${url}: ${error.message}`);
+        await sendTelegramMessage(chatId, `Failed to save ${escapeHtml(url)}: ${escapeHtml(error.message)}`);
       } else {
-        saved.push(url);
+        saved.push({ url, title });
       }
     }
 
     if (saved.length > 0) {
       const label = saved.length === 1 ? "Saved" : `Saved ${saved.length} links`;
-      const detail = saved.map((u) => `- ${u}`).join("\n");
+      const detail = saved
+        .map((s) => `- <b>${escapeHtml(s.title)}</b>\n  ${escapeHtml(s.url)}`)
+        .join("\n");
       await sendTelegramMessage(
         chatId,
-        `${label} under *${category}*\n${detail}`
+        `${label} under <b>${escapeHtml(category)}</b>\n${detail}`
       );
     }
 
