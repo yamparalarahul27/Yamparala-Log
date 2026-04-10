@@ -30,11 +30,9 @@ import {
   ArrowUpRight,
   CalendarDays,
   FolderOpen,
-  Layers3,
   Pencil,
   Plus,
   Search,
-  Tag,
   Trash2,
 } from "lucide-react";
 
@@ -153,12 +151,6 @@ export function Resources() {
     }
   };
 
-  const stats = [
-    { label: "Saved links", value: resources.length, icon: FolderOpen },
-    { label: "Categories", value: categories.length, icon: Tag },
-    { label: "Sources", value: sources.length, icon: Layers3 },
-  ];
-
   return (
     <>
       <main className="min-h-dvh">
@@ -172,32 +164,12 @@ export function Resources() {
                 <h1 className="text-4xl font-semibold text-slate-950 text-balance sm:text-5xl">
                   Save every useful link in one place.
                 </h1>
-                <p className="max-w-2xl text-base text-slate-600 text-pretty">
-                  Keep articles, tools, videos, references, and inspiration together with the note that explains why
-                  they mattered when you found them.
-                </p>
               </div>
 
               <Button className="gap-2 self-start sm:self-auto" onClick={handleOpenCreate}>
                 <Plus className="size-4" />
                 Save resource
               </Button>
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {stats.map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-white text-blue-700 shadow-sm">
-                      <stat.icon className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500">{stat.label}</p>
-                      <p className="text-2xl font-semibold text-slate-950 tabular-nums">{stat.value}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           </Card>
 
