@@ -205,7 +205,7 @@ export function Resources() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-3">
                 <Badge variant="secondary" className="w-fit bg-blue-50 text-blue-700">
-                  Resource library
+                  Rahul's Log
                 </Badge>
                 <h1 className="text-4xl font-semibold text-slate-950 text-balance sm:text-5xl">
                   Save every useful link in one place.
