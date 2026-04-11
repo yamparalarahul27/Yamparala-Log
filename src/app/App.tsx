@@ -1,5 +1,4 @@
 import { Resources } from "@/app/components/Resources";
-import { Agentation } from "agentation";
 import { Toaster } from "sonner";
 
 export default function App() {
@@ -10,7 +9,6 @@ export default function App() {
     >
       <Resources />
       <Toaster position="top-right" richColors />
-      <Agentation />
     </div>
   );
 }
