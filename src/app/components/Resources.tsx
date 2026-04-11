@@ -200,7 +200,7 @@ export function Resources() {
   return (
     <>
       <main className="min-h-dvh">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
           <Card className="rounded-3xl border-slate-200 p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-3">
@@ -344,13 +344,13 @@ export function Resources() {
               </div>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="columns-1 gap-4 space-y-4 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
               {filteredResources.map((resource) => {
                 const tweetId = getTweetId(resource.url);
                 return (
                 <Card
                   key={resource.id}
-                  className={cn("flex h-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm")}
+                  className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm break-inside-avoid")}
                 >
                   {tweetId ? (
                     <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
