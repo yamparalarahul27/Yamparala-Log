@@ -8,4 +8,12 @@ export interface Resource {
   notes: string;
   imageUrl: string | null;
   savedAt: string;
+  description: string | null;
+  siteName: string | null;
+  contentType: string | null;
+  tags: string[];
+  author: string | null;
+  publishedAt: string | null;
+  language: string | null;
+  readingTimeMinutes: number | null;
 }

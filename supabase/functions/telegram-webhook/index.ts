@@ -68,37 +68,39 @@ function parseMessage(text: string): {
   return { urls, category, notes };
 }
 
-async function fetchPageMeta(url: string): Promise<{ title: string | null; imageUrl: string | null }> {
+interface PageMeta {
+  title: string | null;
+  imageUrl: string | null;
+  description: string | null;
+  siteName: string | null;
+  contentType: string | null;
+  tags: string[] | null;
+  author: string | null;
+  publishedAt: string | null;
+  language: string | null;
+  readingTimeMinutes: number | null;
+}
+
+const EMPTY_META: PageMeta = {
+  title: null, imageUrl: null, description: null, siteName: null,
+  contentType: null, tags: null, author: null, publishedAt: null,
+  language: null, readingTimeMinutes: null,
+};
+
+async function fetchPageMeta(url: string): Promise<PageMeta> {
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkBot/1.0)" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(5000),
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-metadata`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ url }),
     });
-    if (!res.ok) return { title: null, imageUrl: null };
-    const html = await res.text();
-
-    // Try og:title first, then <title>
-    const ogTitleMatch = html.match(
-      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
-    ) ?? html.match(
-      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i
-    );
-    const title = ogTitleMatch?.[1]?.trim()
-      ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim()
-      ?? null;
-
-    // Extract og:image
-    const ogImageMatch = html.match(
-      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
-    ) ?? html.match(
-      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
-    );
-    const imageUrl = ogImageMatch?.[1]?.trim() ?? null;
-
-    return { title, imageUrl };
+    if (!res.ok) return EMPTY_META;
+    return await res.json();
   } catch {
-    return { title: null, imageUrl: null };
+    return EMPTY_META;
   }
 }
 
@@ -189,6 +191,14 @@ serve(async (req) => {
         source,
         notes,
         image_url: meta.imageUrl,
+        description: meta.description,
+        site_name: meta.siteName,
+        content_type: meta.contentType,
+        tags: meta.tags ?? [],
+        author: meta.author,
+        published_at: meta.publishedAt,
+        language: meta.language,
+        reading_time_minutes: meta.readingTimeMinutes,
         saved_at: new Date().toISOString(),
       });
 

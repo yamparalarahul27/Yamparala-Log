@@ -22,6 +22,14 @@ interface ResourceRow {
   image_url: string | null;
   saved_at: string | null;
   created_at?: string | null;
+  description: string | null;
+  site_name: string | null;
+  content_type: string | null;
+  tags: string[] | null;
+  author: string | null;
+  published_at: string | null;
+  language: string | null;
+  reading_time_minutes: number | null;
 }
 
 function inferSource(url: string) {
@@ -45,6 +53,14 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
     notes: String(row.notes ?? ""),
     imageUrl: row.image_url ?? null,
     savedAt: String(row.saved_at ?? new Date().toISOString()),
+    description: (row.description as string) ?? null,
+    siteName: (row.site_name as string) ?? null,
+    contentType: (row.content_type as string) ?? null,
+    tags: (row.tags as string[]) ?? [],
+    author: (row.author as string) ?? null,
+    publishedAt: (row.published_at as string) ?? null,
+    language: (row.language as string) ?? null,
+    readingTimeMinutes: (row.reading_time_minutes as number) ?? null,
   };
 }
 
@@ -58,6 +74,14 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
     notes: resource.notes,
     image_url: resource.imageUrl ?? null,
     saved_at: resource.savedAt,
+    description: resource.description ?? null,
+    site_name: resource.siteName ?? null,
+    content_type: resource.contentType ?? null,
+    tags: resource.tags ?? [],
+    author: resource.author ?? null,
+    published_at: resource.publishedAt ?? null,
+    language: resource.language ?? null,
+    reading_time_minutes: resource.readingTimeMinutes ?? null,
   };
 }
 

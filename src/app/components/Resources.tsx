@@ -29,11 +29,13 @@ import { cn } from "@/app/components/ui/utils";
 import {
   ArrowUpRight,
   CalendarDays,
+  Clock,
   FolderOpen,
   Pencil,
   Plus,
   Search,
   Trash2,
+  User,
 } from "lucide-react";
 
 type SortValue = "newest" | "oldest" | "title";
@@ -120,7 +122,19 @@ export function Resources() {
   let filteredResources = resources.filter((resource) => {
     const matchesQuery =
       query.trim() === "" ||
-      [resource.title, resource.notes, resource.url, resource.source, resource.category, resource.toolSubcategory ?? ""]
+      [
+        resource.title,
+        resource.notes,
+        resource.url,
+        resource.source,
+        resource.category,
+        resource.toolSubcategory ?? "",
+        resource.description ?? "",
+        resource.siteName ?? "",
+        resource.contentType ?? "",
+        resource.author ?? "",
+        ...(resource.tags ?? []),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(query.trim().toLowerCase());
@@ -385,6 +399,20 @@ export function Resources() {
                         <Badge variant="outline" className="border-slate-200 text-slate-600">
                           {resource.source}
                         </Badge>
+                        {resource.tags && resource.tags.length > 0 && (
+                          <>
+                            {resource.tags.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="bg-emerald-50 text-emerald-700">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {resource.tags.length > 3 && (
+                              <Badge variant="secondary" className="bg-slate-50 text-slate-500">
+                                +{resource.tags.length - 3}
+                              </Badge>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       <div className="space-y-1">
@@ -417,13 +445,28 @@ export function Resources() {
                   </div>
 
                   <p className="flex-1 text-sm leading-6 text-slate-600 text-pretty">
-                    {resource.notes || "No note yet. Open the link to revisit the original resource."}
+                    {resource.notes || resource.description || "No note yet. Open the link to revisit the original resource."}
                   </p>
 
+                  {resource.author && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <User className="size-3" />
+                      <span>{resource.author}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 tabular-nums">
-                      <CalendarDays className="size-4" />
-                      <span>Saved {formatSavedAt(resource.savedAt)}</span>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 tabular-nums">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="size-4" />
+                        <span>Saved {formatSavedAt(resource.savedAt)}</span>
+                      </div>
+                      {resource.readingTimeMinutes && (
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="size-3.5" />
+                          <span>{resource.readingTimeMinutes} min read</span>
+                        </div>
+                      )}
                     </div>
 
                     <Button asChild variant="outline" className="gap-2">

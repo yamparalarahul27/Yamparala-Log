@@ -54,6 +54,7 @@ export function AddResourceDialog({
   const [source, setSource] = useState(editingResource?.source ?? "");
   const [notes, setNotes] = useState(editingResource?.notes ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(editingResource?.imageUrl ?? null);
+  const [autoMeta, setAutoMeta] = useState<Partial<Resource>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   const fetchMeta = useCallback(async (rawUrl: string) => {
@@ -77,6 +78,16 @@ export function AddResourceDialog({
       const data = await res.json();
       if (data.imageUrl) setImageUrl(data.imageUrl);
       if (data.title && !title) setTitle(data.title);
+      setAutoMeta({
+        description: data.description ?? null,
+        siteName: data.siteName ?? null,
+        contentType: data.contentType ?? null,
+        tags: data.tags ?? [],
+        author: data.author ?? null,
+        publishedAt: data.publishedAt ?? null,
+        language: data.language ?? null,
+        readingTimeMinutes: data.readingTimeMinutes ?? null,
+      });
     } catch {
       // metadata fetch is best-effort
     }
@@ -135,6 +146,14 @@ export function AddResourceDialog({
       notes: notes.trim(),
       imageUrl,
       savedAt: editingResource?.savedAt ?? new Date().toISOString(),
+      description: autoMeta.description ?? editingResource?.description ?? null,
+      siteName: autoMeta.siteName ?? editingResource?.siteName ?? null,
+      contentType: autoMeta.contentType ?? editingResource?.contentType ?? null,
+      tags: autoMeta.tags ?? editingResource?.tags ?? [],
+      author: autoMeta.author ?? editingResource?.author ?? null,
+      publishedAt: autoMeta.publishedAt ?? editingResource?.publishedAt ?? null,
+      language: autoMeta.language ?? editingResource?.language ?? null,
+      readingTimeMinutes: autoMeta.readingTimeMinutes ?? editingResource?.readingTimeMinutes ?? null,
     });
 
     if (didSave) {
