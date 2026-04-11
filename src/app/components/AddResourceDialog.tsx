@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Resource } from "@/app/components/types";
+import { getSupabaseConfig } from "@/services/config";
 import { Button } from "@/app/components/ui/button";
 import {
   Dialog,
@@ -52,7 +53,41 @@ export function AddResourceDialog({
   );
   const [source, setSource] = useState(editingResource?.source ?? "");
   const [notes, setNotes] = useState(editingResource?.notes ?? "");
+  const [imageUrl, setImageUrl] = useState<string | null>(editingResource?.imageUrl ?? null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+
+  const fetchMeta = useCallback(async (rawUrl: string) => {
+    const normalized = /^https?:\/\//i.test(rawUrl.trim()) ? rawUrl.trim() : `https://${rawUrl.trim()}`;
+    try {
+      new URL(normalized);
+    } catch {
+      return;
+    }
+    try {
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const res = await fetch(`${supabaseUrl}/functions/v1/fetch-metadata`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({ url: normalized }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.imageUrl) setImageUrl(data.imageUrl);
+      if (data.title && !title) setTitle(data.title);
+    } catch {
+      // metadata fetch is best-effort
+    }
+  }, [title]);
+
+  useEffect(() => {
+    if (!editingResource && url.trim().length > 10) {
+      const timer = setTimeout(() => fetchMeta(url), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [url, editingResource, fetchMeta]);
 
   const normalizeUrl = (value: string) => {
     const trimmed = value.trim();
@@ -98,6 +133,7 @@ export function AddResourceDialog({
       toolSubcategory: category === "Tools" ? toolSubcategory ?? "Dev tool" : null,
       source: source.trim() || guessSource(normalizedUrl),
       notes: notes.trim(),
+      imageUrl,
       savedAt: editingResource?.savedAt ?? new Date().toISOString(),
     });
 

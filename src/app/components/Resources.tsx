@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { Resource } from "@/app/components/types";
@@ -52,6 +52,52 @@ function getHostname(url: string) {
   } catch {
     return url;
   }
+}
+
+function getTweetId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== "x.com" && u.hostname !== "twitter.com") return null;
+    const match = u.pathname.match(/\/status\/(\d+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+function TweetEmbed({ tweetId }: { tweetId: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const w = window as typeof window & { twttr?: { widgets: { createTweet: (id: string, el: HTMLElement, opts: Record<string, unknown>) => void } } };
+    const render = () => {
+      if (containerRef.current && w.twttr?.widgets) {
+        containerRef.current.innerHTML = "";
+        w.twttr.widgets.createTweet(tweetId, containerRef.current, {
+          theme: "light",
+          conversation: "none",
+          dnt: true,
+        });
+      }
+    };
+
+    if (w.twttr?.widgets) {
+      render();
+    } else {
+      const existing = document.getElementById("twitter-wjs");
+      if (!existing) {
+        const script = document.createElement("script");
+        script.id = "twitter-wjs";
+        script.src = "https://platform.twitter.com/widgets.js";
+        script.onload = render;
+        document.head.appendChild(script);
+      } else {
+        existing.addEventListener("load", render);
+      }
+    }
+  }, [tweetId]);
+
+  return <div ref={containerRef} className="max-w-full overflow-hidden [&_iframe]:!max-w-full" />;
 }
 
 export function Resources() {
@@ -299,11 +345,32 @@ export function Resources() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredResources.map((resource) => (
+              {filteredResources.map((resource) => {
+                const tweetId = getTweetId(resource.url);
+                return (
                 <Card
                   key={resource.id}
-                  className={cn("flex h-full flex-col gap-4 rounded-3xl border-slate-200 p-5 shadow-sm")}
+                  className={cn("flex h-full flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm")}
                 >
+                  {tweetId ? (
+                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
+                      <TweetEmbed tweetId={tweetId} />
+                    </div>
+                  ) : resource.imageUrl ? (
+                    <div className="border-b border-slate-100">
+                      <img
+                        src={resource.imageUrl}
+                        alt=""
+                        className="aspect-[1.91/1] w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-1 flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-2">
@@ -366,8 +433,10 @@ export function Resources() {
                       </a>
                     </Button>
                   </div>
+                  </div>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

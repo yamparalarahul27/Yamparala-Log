@@ -19,6 +19,7 @@ interface ResourceRow {
   tool_subcategory: "Dev tool" | "UX tool" | null;
   source: string | null;
   notes: string | null;
+  image_url: string | null;
   saved_at: string | null;
   created_at?: string | null;
 }
@@ -42,6 +43,7 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
       row.tool_subcategory === "Dev tool" || row.tool_subcategory === "UX tool" ? row.tool_subcategory : null,
     source: String(row.source ?? inferSource(String(row.url ?? ""))),
     notes: String(row.notes ?? ""),
+    imageUrl: row.image_url ?? null,
     savedAt: String(row.saved_at ?? new Date().toISOString()),
   };
 }
@@ -54,6 +56,7 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
     tool_subcategory: resource.category === "Tools" ? resource.toolSubcategory ?? null : null,
     source: resource.source,
     notes: resource.notes,
+    image_url: resource.imageUrl ?? null,
     saved_at: resource.savedAt,
   };
 }

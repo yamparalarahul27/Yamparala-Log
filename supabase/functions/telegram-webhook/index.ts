@@ -68,30 +68,37 @@ function parseMessage(text: string): {
   return { urls, category, notes };
 }
 
-async function fetchPageTitle(url: string): Promise<string | null> {
+async function fetchPageMeta(url: string): Promise<{ title: string | null; imageUrl: string | null }> {
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkBot/1.0)" },
       redirect: "follow",
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { title: null, imageUrl: null };
     const html = await res.text();
 
     // Try og:title first, then <title>
-    const ogMatch = html.match(
+    const ogTitleMatch = html.match(
       /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
     ) ?? html.match(
       /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i
     );
-    if (ogMatch) return ogMatch[1].trim();
+    const title = ogTitleMatch?.[1]?.trim()
+      ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim()
+      ?? null;
 
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch) return titleMatch[1].trim();
+    // Extract og:image
+    const ogImageMatch = html.match(
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
+    ) ?? html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
+    );
+    const imageUrl = ogImageMatch?.[1]?.trim() ?? null;
 
-    return null;
+    return { title, imageUrl };
   } catch {
-    return null;
+    return { title: null, imageUrl: null };
   }
 }
 
@@ -172,8 +179,8 @@ serve(async (req) => {
 
     for (const url of urls) {
       const source = inferSource(url);
-      const pageTitle = await fetchPageTitle(url);
-      const title = pageTitle || notes || source;
+      const meta = await fetchPageMeta(url);
+      const title = meta.title || notes || source;
 
       const { error } = await supabase.from("resources").insert({
         title,
@@ -181,6 +188,7 @@ serve(async (req) => {
         category,
         source,
         notes,
+        image_url: meta.imageUrl,
         saved_at: new Date().toISOString(),
       });
 
