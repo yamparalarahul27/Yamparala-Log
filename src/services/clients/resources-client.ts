@@ -30,6 +30,7 @@ interface ResourceRow {
   published_at: string | null;
   language: string | null;
   reading_time_minutes: number | null;
+  task_done: boolean | null;
 }
 
 function inferSource(url: string) {
@@ -61,6 +62,7 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
     publishedAt: (row.published_at as string) ?? null,
     language: (row.language as string) ?? null,
     readingTimeMinutes: (row.reading_time_minutes as number) ?? null,
+    taskDone: Boolean(row.task_done ?? false),
   };
 }
 
@@ -82,6 +84,7 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
     published_at: resource.publishedAt ?? null,
     language: resource.language ?? null,
     reading_time_minutes: resource.readingTimeMinutes ?? null,
+    task_done: resource.taskDone ?? false,
   };
 }
 

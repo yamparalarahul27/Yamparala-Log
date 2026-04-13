@@ -16,4 +16,5 @@ export interface Resource {
   publishedAt: string | null;
   language: string | null;
   readingTimeMinutes: number | null;
+  taskDone: boolean;
 }

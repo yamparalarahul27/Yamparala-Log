@@ -110,6 +110,7 @@ export function Resources() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
+  const [activeTab, setActiveTab] = useState<"resources" | "tasks">("resources");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogSaving, setDialogSaving] = useState(false);
@@ -123,13 +124,27 @@ export function Resources() {
   const [adminError, setAdminError] = useState<string | null>(null);
   const adminPanelRef = useRef<HTMLDivElement>(null);
 
-  // Lock body scroll when admin panel is open
+  // Lock body scroll when admin panel is open (iOS-safe)
   useEffect(() => {
     if (!adminOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = previous;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
     };
   }, [adminOpen]);
 
@@ -211,7 +226,18 @@ export function Resources() {
   const handleLock = () => {
     setIsAdmin(false);
     setAdminOpen(false);
+    setActiveTab("resources");
     toast.success("Locked");
+  };
+
+  const handleCompleteTask = async (resource: Resource) => {
+    try {
+      await updateResource(resource.id, { ...resource, taskDone: true });
+      toast.success("Task completed");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not complete the task.";
+      toast.error(message);
+    }
   };
 
   const handleSaveResource = async (resource: Omit<Resource, "id">) => {
@@ -303,7 +329,7 @@ export function Resources() {
                       {/* Panel — bottom sheet on mobile, dropdown on desktop */}
                       <div
                         className={cn(
-                          "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
+                          "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
                           "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:h-auto sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
                         )}
                       >
@@ -350,6 +376,62 @@ export function Resources() {
             </div>
           </Card>
 
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === "resources" ? "default" : "outline"}
+                onClick={() => setActiveTab("resources")}
+              >
+                Resources
+              </Button>
+              <Button
+                variant={activeTab === "tasks" ? "default" : "outline"}
+                onClick={() => setActiveTab("tasks")}
+              >
+                Tasks
+              </Button>
+            </div>
+          )}
+
+          {activeTab === "tasks" && isAdmin ? (
+            <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
+              {(() => {
+                const pendingTasks = resources.filter((r) => r.notes.trim() !== "" && !r.taskDone);
+                if (pendingTasks.length === 0) {
+                  return (
+                    <p className="py-8 text-center text-sm text-slate-500">
+                      No pending tasks. Add a comment to a resource to create one.
+                    </p>
+                  );
+                }
+                return (
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    {pendingTasks.map((resource) => (
+                      <div key={resource.id} className="flex items-start gap-3 py-3">
+                        <input
+                          type="checkbox"
+                          className="mt-1 size-5 cursor-pointer rounded border-slate-300"
+                          onChange={() => void handleCompleteTask(resource)}
+                          aria-label={`Complete task: ${resource.notes}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-900 text-pretty">{resource.notes}</p>
+                          <p className="truncate text-xs text-slate-500">{getHostname(resource.url)}</p>
+                        </div>
+                        <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
+                          <a href={resource.url} target="_blank" rel="noreferrer">
+                            Open
+                            <ArrowUpRight className="size-3.5" />
+                          </a>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </Card>
+          ) : (
+          <>
           <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
               <div className="relative">
@@ -600,6 +682,8 @@ export function Resources() {
                 );
               })}
             </div>
+          )}
+          </>
           )}
         </div>
       </main>

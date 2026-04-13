@@ -154,6 +154,7 @@ export function AddResourceDialog({
       publishedAt: autoMeta.publishedAt ?? editingResource?.publishedAt ?? null,
       language: autoMeta.language ?? editingResource?.language ?? null,
       readingTimeMinutes: autoMeta.readingTimeMinutes ?? editingResource?.readingTimeMinutes ?? null,
+      taskDone: editingResource?.taskDone ?? false,
     });
 
     if (didSave) {
