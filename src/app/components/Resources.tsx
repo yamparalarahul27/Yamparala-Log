@@ -270,42 +270,57 @@ export function Resources() {
                     <Settings className="size-5" />
                   </Button>
                   {adminOpen && (
-                    <div className="absolute right-0 top-full z-10 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-                      {isAdmin ? (
-                        <div className="space-y-2">
-                          <p className="text-sm text-slate-600">Admin mode enabled</p>
-                          <Button variant="outline" className="w-full" onClick={handleLock}>
-                            Lock
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label htmlFor="admin-code" className="text-sm">
-                            Admin passcode
-                          </Label>
-                          <Input
-                            id="admin-code"
-                            type="password"
-                            value={adminCode}
-                            onChange={(e) => {
-                              setAdminCode(e.target.value);
-                              setAdminError(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleUnlock();
-                            }}
-                            placeholder="Enter passcode"
-                            autoFocus
-                          />
-                          {adminError && (
-                            <p className="text-sm text-red-600">{adminError}</p>
-                          )}
-                          <Button className="w-full" onClick={handleUnlock}>
-                            Unlock
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    <>
+                      {/* Backdrop — mobile only */}
+                      <div
+                        className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+                        onClick={() => setAdminOpen(false)}
+                        aria-hidden="true"
+                      />
+                      {/* Panel — bottom sheet on mobile, dropdown on desktop */}
+                      <div
+                        className={cn(
+                          "fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
+                          "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
+                        )}
+                      >
+                        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
+                        {isAdmin ? (
+                          <div className="space-y-2">
+                            <p className="text-sm text-slate-600">Admin mode enabled</p>
+                            <Button variant="outline" className="w-full" onClick={handleLock}>
+                              Lock
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label htmlFor="admin-code" className="text-sm">
+                              Admin passcode
+                            </Label>
+                            <Input
+                              id="admin-code"
+                              type="password"
+                              value={adminCode}
+                              onChange={(e) => {
+                                setAdminCode(e.target.value);
+                                setAdminError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleUnlock();
+                              }}
+                              placeholder="Enter passcode"
+                              autoFocus
+                            />
+                            {adminError && (
+                              <p className="text-sm text-red-600">{adminError}</p>
+                            )}
+                            <Button className="w-full" onClick={handleUnlock}>
+                              Unlock
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
