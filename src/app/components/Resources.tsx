@@ -121,6 +121,29 @@ export function Resources() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminCode, setAdminCode] = useState("");
   const [adminError, setAdminError] = useState<string | null>(null);
+  const adminPanelRef = useRef<HTMLDivElement>(null);
+
+  // Lock body scroll when admin panel is open
+  useEffect(() => {
+    if (!adminOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [adminOpen]);
+
+  // Close admin panel on outside click (desktop dropdown)
+  useEffect(() => {
+    if (!adminOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (adminPanelRef.current && !adminPanelRef.current.contains(event.target as Node)) {
+        setAdminOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [adminOpen]);
 
   const categories = Array.from(new Set(resources.map((resource) => resource.category))).sort();
   const sources = Array.from(new Set(resources.map((resource) => resource.source))).sort();
@@ -257,7 +280,7 @@ export function Resources() {
                     Save resource
                   </Button>
                 )}
-                <div className="relative">
+                <div className="relative" ref={adminPanelRef}>
                   <Button
                     variant="ghost"
                     size="icon"
