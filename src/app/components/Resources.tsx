@@ -280,8 +280,8 @@ export function Resources() {
                       {/* Panel — bottom sheet on mobile, dropdown on desktop */}
                       <div
                         className={cn(
-                          "fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
-                          "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
+                          "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
+                          "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:h-auto sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
                         )}
                       >
                         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
