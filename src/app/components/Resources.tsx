@@ -35,6 +35,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Settings,
   Trash2,
   User,
 } from "lucide-react";
@@ -116,8 +117,10 @@ export function Resources() {
   const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [securityCode, setSecurityCode] = useState("");
-  const [securityError, setSecurityError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   const categories = Array.from(new Set(resources.map((resource) => resource.category))).sort();
   const sources = Array.from(new Set(resources.map((resource) => resource.source))).sort();
@@ -165,14 +168,27 @@ export function Resources() {
   };
 
   const handleOpenEdit = (resource: Resource) => {
-    const code = window.prompt("Enter security code to edit this resource:");
-    if (code !== "2703") {
-      if (code !== null) toast.error("Incorrect security code");
-      return;
-    }
     setEditingResource(resource);
     setDialogError(null);
     setDialogOpen(true);
+  };
+
+  const handleUnlock = () => {
+    if (adminCode === "0125k") {
+      setIsAdmin(true);
+      setAdminOpen(false);
+      setAdminCode("");
+      setAdminError(null);
+      toast.success("Admin mode enabled");
+    } else {
+      setAdminError("Incorrect passcode");
+    }
+  };
+
+  const handleLock = () => {
+    setIsAdmin(false);
+    setAdminOpen(false);
+    toast.success("Locked");
   };
 
   const handleSaveResource = async (resource: Omit<Resource, "id">) => {
@@ -234,10 +250,65 @@ export function Resources() {
                 </h1>
               </div>
 
-              <Button className="gap-2 self-start sm:self-auto" onClick={handleOpenCreate}>
-                <Plus className="size-4" />
-                Save resource
-              </Button>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                {isAdmin && (
+                  <Button className="gap-2" onClick={handleOpenCreate}>
+                    <Plus className="size-4" />
+                    Save resource
+                  </Button>
+                )}
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Admin settings"
+                    onClick={() => {
+                      setAdminOpen((prev) => !prev);
+                      setAdminError(null);
+                    }}
+                  >
+                    <Settings className="size-5" />
+                  </Button>
+                  {adminOpen && (
+                    <div className="absolute right-0 top-full z-10 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                      {isAdmin ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-slate-600">Admin mode enabled</p>
+                          <Button variant="outline" className="w-full" onClick={handleLock}>
+                            Lock
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="admin-code" className="text-sm">
+                            Admin passcode
+                          </Label>
+                          <Input
+                            id="admin-code"
+                            type="password"
+                            value={adminCode}
+                            onChange={(e) => {
+                              setAdminCode(e.target.value);
+                              setAdminError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleUnlock();
+                            }}
+                            placeholder="Enter passcode"
+                            autoFocus
+                          />
+                          {adminError && (
+                            <p className="text-sm text-red-600">{adminError}</p>
+                          )}
+                          <Button className="w-full" onClick={handleUnlock}>
+                            Unlock
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </Card>
 
@@ -429,27 +500,29 @@ export function Resources() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        aria-label={`Edit ${resource.title}`}
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenEdit(resource)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        aria-label={`Delete ${resource.title}`}
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setResourceToDelete(resource);
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          aria-label={`Edit ${resource.title}`}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(resource)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          aria-label={`Delete ${resource.title}`}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setDeleteError(null);
+                            setResourceToDelete(resource);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <p className="flex-1 text-sm leading-6 text-slate-600 text-pretty">
@@ -518,8 +591,6 @@ export function Resources() {
           if (!nextOpen) {
             setResourceToDelete(null);
             setDeleteError(null);
-            setSecurityCode("");
-            setSecurityError(null);
           }
         }}
       >
@@ -528,27 +599,10 @@ export function Resources() {
             <AlertDialogTitle>Delete this resource?</AlertDialogTitle>
             <AlertDialogDescription>
               {resourceToDelete
-                ? `This will remove "${resourceToDelete.title}" from the library. Enter the security code to confirm.`
+                ? `This will remove "${resourceToDelete.title}" from the library.`
                 : "This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          <div>
-            <Label htmlFor="security-code">Security code</Label>
-            <Input
-              id="security-code"
-              type="password"
-              value={securityCode}
-              onChange={(e) => {
-                setSecurityCode(e.target.value);
-                setSecurityError(null);
-              }}
-              placeholder="Enter code"
-            />
-            {securityError && (
-              <p className="mt-1 text-sm text-red-600">{securityError}</p>
-            )}
-          </div>
 
           {deleteError && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -563,10 +617,6 @@ export function Resources() {
               disabled={deleting}
               onClick={(event) => {
                 event.preventDefault();
-                if (securityCode !== "2703") {
-                  setSecurityError("Incorrect security code");
-                  return;
-                }
                 void handleDeleteResource();
               }}
             >
