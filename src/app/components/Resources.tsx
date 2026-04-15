@@ -127,24 +127,11 @@ export function Resources() {
   // Lock body scroll when admin panel is open (iOS-safe)
   useEffect(() => {
     if (!adminOpen) return;
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const prev = {
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
-      overflow: body.style.overflow,
-    };
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
-    body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     return () => {
-      body.style.position = prev.position;
-      body.style.top = prev.top;
-      body.style.width = prev.width;
-      body.style.overflow = prev.overflow;
-      window.scrollTo(0, scrollY);
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
     };
   }, [adminOpen]);
 
@@ -322,7 +309,7 @@ export function Resources() {
                     <>
                       {/* Backdrop — mobile only */}
                       <div
-                        className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+                        className="fixed inset-0 z-40 bg-black/40 touch-none sm:hidden"
                         onClick={() => setAdminOpen(false)}
                         aria-hidden="true"
                       />
