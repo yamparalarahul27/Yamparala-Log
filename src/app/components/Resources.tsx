@@ -219,7 +219,6 @@ export function Resources() {
   const handleLock = () => {
     setIsAdmin(false);
     setAdminOpen(false);
-    setActiveTab("resources");
     toast.success("Locked");
   };
 
@@ -369,24 +368,22 @@ export function Resources() {
             </div>
           </Card>
 
-          {isAdmin && (
-            <div className="flex gap-2">
-              <Button
-                variant={activeTab === "resources" ? "default" : "outline"}
-                onClick={() => setActiveTab("resources")}
-              >
-                Resources
-              </Button>
-              <Button
-                variant={activeTab === "tasks" ? "default" : "outline"}
-                onClick={() => setActiveTab("tasks")}
-              >
-                Tasks
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <Button
+              variant={activeTab === "resources" ? "default" : "outline"}
+              onClick={() => setActiveTab("resources")}
+            >
+              Resources
+            </Button>
+            <Button
+              variant={activeTab === "tasks" ? "default" : "outline"}
+              onClick={() => setActiveTab("tasks")}
+            >
+              Tasks
+            </Button>
+          </div>
 
-          {activeTab === "tasks" && isAdmin ? (
+          {activeTab === "tasks" ? (
             <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
               {(() => {
                 const pendingTasks = resources.filter((r) => r.notes.trim() !== "" && !r.taskDone);
@@ -403,7 +400,8 @@ export function Resources() {
                       <div key={resource.id} className="flex items-start gap-3 py-3">
                         <input
                           type="checkbox"
-                          className="mt-1 size-5 cursor-pointer rounded border-slate-300"
+                          disabled={!isAdmin}
+                          className="mt-1 size-5 rounded border-slate-300 disabled:cursor-not-allowed disabled:opacity-50 [&:not(:disabled)]:cursor-pointer"
                           onChange={() => void handleCompleteTask(resource)}
                           aria-label={`Complete task: ${resource.notes}`}
                         />
