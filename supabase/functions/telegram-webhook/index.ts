@@ -155,6 +155,7 @@ serve(async (req) => {
           "<b>Format:</b>\n" +
           "<code>https://example.com</code>\n" +
           "<code>https://example.com #Tools Great dev tool</code>\n\n" +
+          "<b>Add a task:</b> Send a link, then send a text within 1 minute — it becomes a task.\n\n" +
           `<b>Categories:</b> ${VALID_CATEGORIES.join(", ")}\n\n` +
           `Your chat ID: <code>${chatId}</code>`
       );
@@ -169,11 +170,37 @@ serve(async (req) => {
 
     const { urls, category, notes } = parseMessage(text);
 
+    // No URL — check if this is a follow-up comment to the last saved link (within 1 min)
     if (urls.length === 0) {
-      await sendTelegramMessage(
-        chatId,
-        "No link found. Send a message with a URL to save it."
-      );
+      const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+      const { data: recent } = await supabase
+        .from("resources")
+        .select("id, title")
+        .gte("saved_at", oneMinuteAgo)
+        .order("saved_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (recent) {
+        const { error } = await supabase
+          .from("resources")
+          .update({ notes: text.trim() })
+          .eq("id", recent.id);
+
+        if (error) {
+          await sendTelegramMessage(chatId, `Could not add task: ${escapeHtml(error.message)}`);
+        } else {
+          await sendTelegramMessage(
+            chatId,
+            `Task added to <b>${escapeHtml(recent.title)}</b>:\n${escapeHtml(text.trim())}`
+          );
+        }
+      } else {
+        await sendTelegramMessage(
+          chatId,
+          "No link found and no recent save to attach this to.\nSend a URL first, then follow up with your task."
+        );
+      }
       return new Response("OK", { status: 200 });
     }
 
