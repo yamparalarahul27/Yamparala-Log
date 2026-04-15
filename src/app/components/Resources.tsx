@@ -127,10 +127,8 @@ export function Resources() {
   // Lock body scroll when admin panel is open (iOS-safe)
   useEffect(() => {
     if (!adminOpen) return;
-    document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
-      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     };
   }, [adminOpen]);
@@ -200,11 +198,19 @@ export function Resources() {
 
   const handleUnlock = () => {
     if (adminCode === "0125k") {
-      setIsAdmin(true);
+      // Blur the input to dismiss the keyboard before heavy re-renders
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       setAdminOpen(false);
       setAdminCode("");
       setAdminError(null);
-      toast.success("Admin mode enabled");
+      // Defer the admin UI reveal to the next frame so the sheet
+      // unmount and keyboard dismiss finish first
+      requestAnimationFrame(() => {
+        setIsAdmin(true);
+        toast.success("Admin mode enabled");
+      });
     } else {
       setAdminError("Incorrect passcode");
     }
