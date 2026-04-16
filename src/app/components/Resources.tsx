@@ -142,7 +142,7 @@ function TweetEmbed({ tweetId }: { tweetId: string }) {
 }
 
 export function Resources() {
-  const { resources, loading, loadError, reload, createResource, updateResource, deleteResource } = useResources();
+  const { resources, loading, loadError, reload, checkDuplicate, createResource, updateResource, deleteResource } = useResources();
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -278,6 +278,12 @@ export function Resources() {
         await updateResource(editingResource.id, resource);
         toast.success("Resource updated");
       } else {
+        const existing = await checkDuplicate(resource.url);
+        if (existing) {
+          setDialogError(`Already saved as "${existing.title}"`);
+          setDialogSaving(false);
+          return false;
+        }
         await createResource(resource);
         toast.success("Resource saved");
       }

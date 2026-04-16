@@ -20,6 +20,43 @@ function extractUrls(text: string): string[] {
   return text.match(urlRegex) ?? [];
 }
 
+const TRACKING_PARAMS = new Set([
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+  "fbclid", "gclid", "msclkid", "igshid", "twclid",
+  "ref", "ref_src", "ref_url", "s", "si", "t",
+  "mc_cid", "mc_eid", "source", "feature",
+]);
+
+const HOST_ALIASES: Record<string, string> = {
+  "twitter.com": "x.com",
+  "m.facebook.com": "facebook.com",
+  "mobile.twitter.com": "x.com",
+};
+
+function normalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.protocol = "https:";
+    u.hostname = u.hostname.toLowerCase().replace(/^www\./, "");
+    if (HOST_ALIASES[u.hostname]) u.hostname = HOST_ALIASES[u.hostname];
+    if (u.hostname === "youtu.be") {
+      const videoId = u.pathname.slice(1);
+      u.hostname = "youtube.com";
+      u.pathname = "/watch";
+      u.searchParams.set("v", videoId);
+    }
+    for (const key of [...u.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key.toLowerCase())) u.searchParams.delete(key);
+    }
+    u.searchParams.sort();
+    u.hash = "";
+    if (u.pathname.length > 1 && u.pathname.endsWith("/")) u.pathname = u.pathname.slice(0, -1);
+    return u.toString();
+  } catch {
+    return raw.trim().toLowerCase();
+  }
+}
+
 function inferSource(url: string): string {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, "");
@@ -205,8 +242,24 @@ serve(async (req) => {
     }
 
     const saved: { url: string; title: string }[] = [];
+    const skipped: { url: string; title: string }[] = [];
 
     for (const url of urls) {
+      const normalized = normalizeUrl(url);
+
+      // Check for duplicate
+      const { data: existing } = await supabase
+        .from("resources")
+        .select("id, title")
+        .eq("normalized_url", normalized)
+        .limit(1)
+        .single();
+
+      if (existing) {
+        skipped.push({ url, title: existing.title });
+        continue;
+      }
+
       const source = inferSource(url);
       const meta = await fetchPageMeta(url);
       const title = meta.title || notes || source;
@@ -214,6 +267,7 @@ serve(async (req) => {
       const { error } = await supabase.from("resources").insert({
         title,
         url,
+        normalized_url: normalized,
         category,
         source,
         notes,
@@ -244,6 +298,16 @@ serve(async (req) => {
       await sendTelegramMessage(
         chatId,
         `${label} under <b>${escapeHtml(category)}</b>\n${detail}`
+      );
+    }
+
+    if (skipped.length > 0) {
+      const detail = skipped
+        .map((s) => `- <b>${escapeHtml(s.title)}</b>`)
+        .join("\n");
+      await sendTelegramMessage(
+        chatId,
+        `Already saved:\n${detail}`
       );
     }
 

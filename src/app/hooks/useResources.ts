@@ -25,6 +25,10 @@ export function useResources() {
     void loadResources();
   }, [loadResources]);
 
+  const checkDuplicate = async (url: string): Promise<Resource | null> => {
+    return apiClient.resources.findByNormalizedUrl(url);
+  };
+
   const createResource = async (resource: Omit<Resource, "id">) => {
     const createdResource = await apiClient.resources.create(resource);
     setResources((current) =>
@@ -53,6 +57,7 @@ export function useResources() {
     loading,
     loadError,
     reload: loadResources,
+    checkDuplicate,
     createResource,
     updateResource,
     deleteResource,

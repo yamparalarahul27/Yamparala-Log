@@ -1,5 +1,6 @@
 import { Resource } from "@/app/components/types";
 import { getSupabaseConfig, SUPABASE_TABLES } from "../config";
+import { normalizeUrl } from "@/utils/normalize-url";
 
 export interface ApiError {
   message: string;
@@ -31,6 +32,7 @@ interface ResourceRow {
   language: string | null;
   reading_time_minutes: number | null;
   task_done: boolean | null;
+  normalized_url: string | null;
 }
 
 function inferSource(url: string) {
@@ -70,6 +72,7 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
   return {
     title: resource.title,
     url: resource.url,
+    normalized_url: resource.url ? normalizeUrl(resource.url) : null,
     category: resource.category,
     tool_subcategory: resource.category === "Tools" ? resource.toolSubcategory ?? null : null,
     source: resource.source,
@@ -129,6 +132,14 @@ export class ResourcesClient {
       `/${SUPABASE_TABLES.RESOURCES}?select=*&order=saved_at.desc`,
     );
     return rows.map(toResource);
+  }
+
+  async findByNormalizedUrl(url: string): Promise<Resource | null> {
+    const normalized = normalizeUrl(url);
+    const rows = await supabaseRequest<ResourceRow[]>(
+      `/${SUPABASE_TABLES.RESOURCES}?normalized_url=eq.${encodeURIComponent(normalized)}&select=*&limit=1`,
+    );
+    return rows.length > 0 ? toResource(rows[0]) : null;
   }
 
   async create(resource: CreateResourceDto): Promise<Resource> {
