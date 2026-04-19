@@ -11,11 +11,20 @@ export interface GalleryItem {
   tags?: string[];
 }
 
+function proxyImage(url: string): string {
+  try {
+    new URL(url);
+  } catch {
+    return url;
+  }
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ""))}&w=800&output=webp&q=75`;
+}
+
 export function resourceToGalleryItem(r: Resource): GalleryItem | null {
   if (!r.imageUrl) return null;
   return {
     id: r.id,
-    image: r.imageUrl,
+    image: proxyImage(r.imageUrl),
     title: r.title,
     url: r.url,
     description: r.notes || r.description || undefined,
