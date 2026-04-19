@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { Resource } from "@/app/components/types";
+import { resourceToGalleryItem } from "@/app/components/CanvasGallery";
 import { useResources } from "@/app/hooks/useResources";
+
+const CanvasGallery = lazy(() => import("@/app/components/CanvasGallery"));
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +35,8 @@ import {
   CalendarDays,
   Clock,
   FolderOpen,
+  GalleryHorizontalEnd,
+  LayoutGrid,
   Pencil,
   Plus,
   Search,
@@ -148,6 +153,7 @@ export function Resources() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
   const [activeTab, setActiveTab] = useState<"resources" | "tasks">("resources");
+  const [viewMode, setViewMode] = useState<"grid" | "gallery">("grid");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogSaving, setDialogSaving] = useState(false);
@@ -411,19 +417,41 @@ export function Resources() {
             </div>
           </Card>
 
-          <div className="flex gap-2">
-            <Button
-              variant={activeTab === "resources" ? "default" : "outline"}
-              onClick={() => setActiveTab("resources")}
-            >
-              Resources
-            </Button>
-            <Button
-              variant={activeTab === "tasks" ? "default" : "outline"}
-              onClick={() => setActiveTab("tasks")}
-            >
-              Tasks
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === "resources" ? "default" : "outline"}
+                onClick={() => setActiveTab("resources")}
+              >
+                Resources
+              </Button>
+              <Button
+                variant={activeTab === "tasks" ? "default" : "outline"}
+                onClick={() => setActiveTab("tasks")}
+              >
+                Tasks
+              </Button>
+            </div>
+            {activeTab === "resources" && (
+              <div className="flex gap-1">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="icon"
+                  aria-label="Grid view"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <LayoutGrid className="size-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "gallery" ? "default" : "ghost"}
+                  size="icon"
+                  aria-label="Gallery view"
+                  onClick={() => setViewMode("gallery")}
+                >
+                  <GalleryHorizontalEnd className="size-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           {activeTab === "tasks" ? (
@@ -464,6 +492,14 @@ export function Resources() {
                 );
               })()}
             </Card>
+          ) : viewMode === "gallery" ? (
+          <div className="h-[70vh] w-full overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+            <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400">Loading gallery...</div>}>
+              <CanvasGallery
+                items={filteredResources.map(resourceToGalleryItem).filter((g): g is NonNullable<typeof g> => g !== null)}
+              />
+            </Suspense>
+          </div>
           ) : (
           <>
           <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
