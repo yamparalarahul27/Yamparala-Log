@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { Resource } from "@/app/components/types";
-import { resourceToGalleryItem } from "@/app/components/CanvasGallery";
+import { resourceToGalleryItem } from "@/app/components/gallery-utils";
 import { useResources } from "@/app/hooks/useResources";
 
 const CanvasGallery = lazy(() => import("@/app/components/CanvasGallery"));

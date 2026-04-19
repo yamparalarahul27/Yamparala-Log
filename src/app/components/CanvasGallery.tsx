@@ -3,18 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Image as DreiImage, useCursor } from "@react-three/drei";
 import * as THREE from "three";
 import { X, ExternalLink, MapPin, Calendar, Camera } from "lucide-react";
-import type { Resource } from "@/app/components/types";
-
-export interface GalleryItem {
-  id: string;
-  image: string;
-  title: string;
-  url: string;
-  description?: string;
-  source?: string;
-  date?: string;
-  tags?: string[];
-}
+import type { GalleryItem } from "@/app/components/gallery-utils";
 
 interface CanvasGalleryProps {
   items: GalleryItem[];
@@ -23,20 +12,6 @@ interface CanvasGalleryProps {
   gap?: number;
   itemWidth?: number;
   itemHeight?: number;
-}
-
-export function resourceToGalleryItem(r: Resource): GalleryItem | null {
-  if (!r.imageUrl) return null;
-  return {
-    id: r.id,
-    image: r.imageUrl,
-    title: r.title,
-    url: r.url,
-    description: r.notes || r.description || undefined,
-    source: r.source,
-    date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(r.savedAt)),
-    tags: r.tags?.length ? r.tags : undefined,
-  };
 }
 
 function useIsMobile(breakpoint = 640) {
