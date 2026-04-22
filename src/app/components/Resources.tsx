@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 
 type SortValue = "newest" | "oldest" | "title";
+const SHOW_GALLERY_VIEW_TRIGGER = false;
 
 function formatSavedAt(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -442,14 +443,16 @@ export function Resources() {
                 >
                   <LayoutGrid className="size-4" />
                 </Button>
-                <Button
-                  variant={viewMode === "gallery" ? "default" : "ghost"}
-                  size="icon"
-                  aria-label="Gallery view"
-                  onClick={() => setViewMode("gallery")}
-                >
-                  <GalleryHorizontalEnd className="size-4" />
-                </Button>
+                {SHOW_GALLERY_VIEW_TRIGGER && (
+                  <Button
+                    variant={viewMode === "gallery" ? "default" : "ghost"}
+                    size="icon"
+                    aria-label="Gallery view"
+                    onClick={() => setViewMode("gallery")}
+                  >
+                    <GalleryHorizontalEnd className="size-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
