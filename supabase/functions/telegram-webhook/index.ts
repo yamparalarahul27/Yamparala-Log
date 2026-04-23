@@ -67,14 +67,11 @@ function inferSource(url: string): string {
 }
 
 const VALID_CATEGORIES = [
-  "Articles",
-  "Tools",
-  "Docs",
-  "Inspiration",
-  "Assets",
-  "Courses",
-  "Skill",
-  "Other",
+  "Article",
+  "Portfolio",
+  "Dev",
+  "Design",
+  "Others",
 ];
 
 function parseMessage(text: string): {
