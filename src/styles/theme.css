@@ -135,6 +135,8 @@
 
   html {
     font-size: var(--font-size);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
   }
 
   h1 {
