@@ -8,6 +8,8 @@ const CORS_HEADERS = {
 const EMPTY_META = {
   title: null,
   imageUrl: null,
+  imageWidth: null,
+  imageHeight: null,
   description: null,
   siteName: null,
   contentType: null,
@@ -127,8 +129,14 @@ serve(async (req) => {
       ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim()
       ?? null;
 
-    // Image: og:image
+    // Image: og:image (+ width/height when the publisher exposes them)
     const imageUrl = extractMeta("image", html);
+    const parseDim = (raw: string | null) => {
+      const n = raw ? parseInt(raw, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    const imageWidth = parseDim(extractMeta("image:width", html));
+    const imageHeight = parseDim(extractMeta("image:height", html));
 
     // Description: og:description -> <meta name="description">
     const description = extractMeta("description", html);
@@ -179,7 +187,7 @@ serve(async (req) => {
     const readingTimeMinutes = estimateReadingTime(html);
 
     return Response.json(
-      { title, imageUrl, description, siteName, contentType, tags: tags.length > 0 ? tags : null, author, publishedAt, language, readingTimeMinutes },
+      { title, imageUrl, imageWidth, imageHeight, description, siteName, contentType, tags: tags.length > 0 ? tags : null, author, publishedAt, language, readingTimeMinutes },
       { headers: CORS_HEADERS },
     );
   } catch {

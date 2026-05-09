@@ -54,6 +54,8 @@ export function AddResourceDialog({
   const [source, setSource] = useState(editingResource?.source ?? "");
   const [notes, setNotes] = useState(editingResource?.notes ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(editingResource?.imageUrl ?? null);
+  const [imageWidth, setImageWidth] = useState<number | null>(editingResource?.imageWidth ?? null);
+  const [imageHeight, setImageHeight] = useState<number | null>(editingResource?.imageHeight ?? null);
   const [autoMeta, setAutoMeta] = useState<Partial<Resource>>({});
   const [fieldError, setFieldError] = useState<string | null>(null);
 
@@ -77,6 +79,8 @@ export function AddResourceDialog({
       if (!res.ok) return;
       const data = await res.json();
       if (data.imageUrl) setImageUrl(data.imageUrl);
+      if (typeof data.imageWidth === "number" && data.imageWidth > 0) setImageWidth(data.imageWidth);
+      if (typeof data.imageHeight === "number" && data.imageHeight > 0) setImageHeight(data.imageHeight);
       if (data.title && !title) setTitle(data.title);
       setAutoMeta({
         description: data.description ?? null,
@@ -145,6 +149,8 @@ export function AddResourceDialog({
       source: source.trim() || guessSource(normalizedUrl),
       notes: notes.trim(),
       imageUrl,
+      imageWidth,
+      imageHeight,
       savedAt: editingResource?.savedAt ?? new Date().toISOString(),
       description: autoMeta.description ?? editingResource?.description ?? null,
       siteName: autoMeta.siteName ?? editingResource?.siteName ?? null,

@@ -7,6 +7,8 @@ export interface Resource {
   source: string;
   notes: string;
   imageUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   savedAt: string;
   description: string | null;
   siteName: string | null;

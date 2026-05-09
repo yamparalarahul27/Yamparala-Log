@@ -21,6 +21,8 @@ interface ResourceRow {
   source: string | null;
   notes: string | null;
   image_url: string | null;
+  image_width: number | null;
+  image_height: number | null;
   saved_at: string | null;
   created_at?: string | null;
   description: string | null;
@@ -55,6 +57,8 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
     source: String(row.source ?? inferSource(String(row.url ?? ""))),
     notes: String(row.notes ?? ""),
     imageUrl: row.image_url ?? null,
+    imageWidth: typeof row.image_width === "number" ? row.image_width : null,
+    imageHeight: typeof row.image_height === "number" ? row.image_height : null,
     savedAt: String(row.saved_at ?? new Date().toISOString()),
     description: (row.description as string) ?? null,
     siteName: (row.site_name as string) ?? null,
@@ -78,6 +82,8 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
     source: resource.source,
     notes: resource.notes,
     image_url: resource.imageUrl ?? null,
+    image_width: resource.imageWidth ?? null,
+    image_height: resource.imageHeight ?? null,
     saved_at: resource.savedAt,
     description: resource.description ?? null,
     site_name: resource.siteName ?? null,
