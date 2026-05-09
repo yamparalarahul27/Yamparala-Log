@@ -1,7 +1,10 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { toast } from "sonner";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
+import { AdminGate } from "@/app/components/AdminGate";
+import { ResourceCard } from "@/app/components/ResourceCard";
 import { Resource } from "@/app/components/types";
+import { getHostname } from "@/app/components/resource-format";
 import { resourceToGalleryItem } from "@/app/components/gallery-utils";
 import { useResources } from "@/app/hooks/useResources";
 
@@ -20,7 +23,6 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,123 +31,17 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { cn } from "@/app/components/ui/utils";
 import {
   ArrowUpRight,
-  CalendarDays,
-  Clock,
   FolderOpen,
   GalleryHorizontalEnd,
   LayoutGrid,
-  Pencil,
   Plus,
   Search,
-  Settings,
-  Trash2,
-  User,
 } from "lucide-react";
 
 type SortValue = "newest" | "oldest" | "title";
 const SHOW_GALLERY_VIEW_TRIGGER = false;
-
-function formatSavedAt(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function getHostname(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function getTweetId(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (u.hostname !== "x.com" && u.hostname !== "twitter.com") return null;
-    const match = u.pathname.match(/\/status\/(\d+)/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
-
-function proxyImage(url: string | null, width = 800): string | null {
-  if (!url) return null;
-  try {
-    new URL(url);
-  } catch {
-    return null;
-  }
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ""))}&w=${width}&output=webp&q=75`;
-}
-
-function TweetEmbed({ tweetId }: { tweetId: string }) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  // Only load the widget when the card scrolls near the viewport
-  useEffect(() => {
-    if (!wrapperRef.current) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "300px" },
-    );
-    io.observe(wrapperRef.current);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-    const w = window as typeof window & { twttr?: { widgets: { createTweet: (id: string, el: HTMLElement, opts: Record<string, unknown>) => void } } };
-    const render = () => {
-      if (containerRef.current && w.twttr?.widgets) {
-        containerRef.current.innerHTML = "";
-        w.twttr.widgets.createTweet(tweetId, containerRef.current, {
-          theme: "light",
-          conversation: "none",
-          dnt: true,
-        });
-      }
-    };
-
-    if (w.twttr?.widgets) {
-      render();
-    } else {
-      const existing = document.getElementById("twitter-wjs");
-      if (!existing) {
-        const script = document.createElement("script");
-        script.id = "twitter-wjs";
-        script.src = "https://platform.twitter.com/widgets.js";
-        script.onload = render;
-        document.head.appendChild(script);
-      } else {
-        existing.addEventListener("load", render);
-      }
-    }
-  }, [tweetId, visible]);
-
-  return (
-    <div ref={wrapperRef} className="max-w-full overflow-hidden [&_iframe]:!max-w-full">
-      {visible ? (
-        <div ref={containerRef} />
-      ) : (
-        <div className="min-h-[120px] animate-pulse rounded-lg bg-slate-100" />
-      )}
-    </div>
-  );
-}
 
 export function Resources() {
   const { resources, loading, loadError, reload, checkDuplicate, createResource, updateResource, deleteResource } = useResources();
@@ -163,31 +59,6 @@ export function Resources() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminCode, setAdminCode] = useState("");
-  const [adminError, setAdminError] = useState<string | null>(null);
-  const adminPanelRef = useRef<HTMLDivElement>(null);
-
-  // Lock body scroll when admin panel is open (iOS-safe)
-  useEffect(() => {
-    if (!adminOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [adminOpen]);
-
-  // Close admin panel on outside click (desktop dropdown)
-  useEffect(() => {
-    if (!adminOpen) return;
-    const handleClick = (event: MouseEvent) => {
-      if (adminPanelRef.current && !adminPanelRef.current.contains(event.target as Node)) {
-        setAdminOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [adminOpen]);
 
   const categories = Array.from(new Set(resources.map((resource) => resource.category))).sort();
   const sources = Array.from(new Set(resources.map((resource) => resource.source))).sort();
@@ -240,30 +111,9 @@ export function Resources() {
     setDialogOpen(true);
   };
 
-  const handleUnlock = () => {
-    if (adminCode === "0125k") {
-      // Blur the input to dismiss the keyboard before heavy re-renders
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      setAdminOpen(false);
-      setAdminCode("");
-      setAdminError(null);
-      // Defer the admin UI reveal to the next frame so the sheet
-      // unmount and keyboard dismiss finish first
-      requestAnimationFrame(() => {
-        setIsAdmin(true);
-        toast.success("Admin mode enabled");
-      });
-    } else {
-      setAdminError("Incorrect passcode");
-    }
-  };
-
-  const handleLock = () => {
-    setIsAdmin(false);
-    setAdminOpen(false);
-    toast.success("Locked");
+  const handleRequestDelete = (resource: Resource) => {
+    setDeleteError(null);
+    setResourceToDelete(resource);
   };
 
   const handleCompleteTask = async (resource: Resource) => {
@@ -348,72 +198,11 @@ export function Resources() {
                     Save resource
                   </Button>
                 )}
-                <div className="relative" ref={adminPanelRef}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Admin settings"
-                    onClick={() => {
-                      setAdminOpen((prev) => !prev);
-                      setAdminError(null);
-                    }}
-                  >
-                    <Settings className="size-5" />
-                  </Button>
-                  {adminOpen && (
-                    <>
-                      {/* Backdrop — mobile only */}
-                      <div
-                        className="fixed inset-0 z-40 bg-black/40 touch-none sm:hidden"
-                        onClick={() => setAdminOpen(false)}
-                        aria-hidden="true"
-                      />
-                      {/* Panel — bottom sheet on mobile, dropdown on desktop */}
-                      <div
-                        className={cn(
-                          "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
-                          "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:h-auto sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
-                        )}
-                      >
-                        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
-                        {isAdmin ? (
-                          <div className="space-y-2">
-                            <p className="text-sm text-slate-600">Admin mode enabled</p>
-                            <Button variant="outline" className="w-full" onClick={handleLock}>
-                              Lock
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <Label htmlFor="admin-code" className="text-sm">
-                              Admin passcode
-                            </Label>
-                            <Input
-                              id="admin-code"
-                              type="password"
-                              value={adminCode}
-                              onChange={(e) => {
-                                setAdminCode(e.target.value);
-                                setAdminError(null);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleUnlock();
-                              }}
-                              placeholder="Enter passcode"
-                              autoFocus
-                            />
-                            {adminError && (
-                              <p className="text-sm text-red-600">{adminError}</p>
-                            )}
-                            <Button className="w-full" onClick={handleUnlock}>
-                              Unlock
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <AdminGate
+                  isAdmin={isAdmin}
+                  onUnlock={() => setIsAdmin(true)}
+                  onLock={() => setIsAdmin(false)}
+                />
               </div>
             </div>
           </Card>
@@ -631,136 +420,15 @@ export function Resources() {
             </Card>
           ) : (
             <div className="columns-1 gap-4 space-y-4 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
-              {filteredResources.map((resource) => {
-                const tweetId = getTweetId(resource.url);
-                return (
-                <Card
+              {filteredResources.map((resource) => (
+                <ResourceCard
                   key={resource.id}
-                  className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm break-inside-avoid")}
-                >
-                  {tweetId ? (
-                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
-                      <TweetEmbed tweetId={tweetId} />
-                    </div>
-                  ) : resource.imageUrl ? (
-                    <div className="border-b border-slate-100">
-                      <img
-                        src={proxyImage(resource.imageUrl) ?? resource.imageUrl}
-                        alt=""
-                        className="aspect-[1.91/1] w-full bg-slate-100 object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(e) => {
-                          const img = e.currentTarget as HTMLImageElement;
-                          // Fallback to original URL if proxy fails
-                          if (img.src !== resource.imageUrl && resource.imageUrl) {
-                            img.src = resource.imageUrl;
-                          } else {
-                            img.style.display = "none";
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-1 flex-col gap-4 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                          {resource.category}
-                        </Badge>
-                        {resource.toolSubcategory && (
-                          <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                            {resource.toolSubcategory}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="border-slate-200 text-slate-600">
-                          {resource.source}
-                        </Badge>
-                        {resource.tags && resource.tags.length > 0 && (
-                          <>
-                            {resource.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="bg-emerald-50 text-emerald-700">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {resource.tags.length > 3 && (
-                              <Badge variant="secondary" className="bg-slate-50 text-slate-500">
-                                +{resource.tags.length - 3}
-                              </Badge>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <h2 className="text-xl font-semibold text-slate-950 text-balance">{resource.title}</h2>
-                        <p className="truncate text-sm text-slate-500">{getHostname(resource.url)}</p>
-                      </div>
-                    </div>
-
-                    {isAdmin && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          aria-label={`Edit ${resource.title}`}
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(resource)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          aria-label={`Delete ${resource.title}`}
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setDeleteError(null);
-                            setResourceToDelete(resource);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="flex-1 text-sm leading-6 text-slate-600 text-pretty">
-                    {resource.notes || resource.description || "No note yet. Open the link to revisit the original resource."}
-                  </p>
-
-                  {resource.author && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <User className="size-3" />
-                      <span>{resource.author}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 tabular-nums">
-                      <div className="flex items-center gap-1.5">
-                        <CalendarDays className="size-4" />
-                        <span>Saved {formatSavedAt(resource.savedAt)}</span>
-                      </div>
-                      {resource.readingTimeMinutes && (
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="size-3.5" />
-                          <span>{resource.readingTimeMinutes} min read</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <Button asChild variant="outline" className="gap-2">
-                      <a href={resource.url} target="_blank" rel="noreferrer">
-                        Open
-                        <ArrowUpRight className="size-4" />
-                      </a>
-                    </Button>
-                  </div>
-                  </div>
-                </Card>
-                );
-              })}
+                  resource={resource}
+                  isAdmin={isAdmin}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleRequestDelete}
+                />
+              ))}
             </div>
           )}
           </>
