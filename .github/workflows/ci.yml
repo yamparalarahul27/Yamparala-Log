@@ -21,7 +21,12 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        # npm install (not npm ci) so platform-specific optional deps —
+        # notably @rollup/rollup-linux-x64-gnu — get resolved on the
+        # Linux runner. The lockfile is generated on macOS, which omits
+        # the Linux native binary; npm ci would then fail to load it
+        # (npm/cli#4828).
+        run: npm install
 
       - name: Build Application
         run: npm run build
