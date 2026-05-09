@@ -32,6 +32,19 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install
 
+      - name: Write dummy .env for tests
+        # getSupabaseConfig() throws if VITE_SUPABASE_URL / _ANON_KEY are
+        # missing, which crashes the app at first fetch and blocks the
+        # Playwright dev server from rendering the empty state. The real
+        # Supabase URL never gets hit because tests intercept
+        # **/rest/v1/resources** with mockResourceApi — dummy values are
+        # enough to satisfy the runtime check.
+        run: |
+          cat > .env <<EOF
+          VITE_SUPABASE_URL=https://ci-dummy.supabase.co
+          VITE_SUPABASE_ANON_KEY=ci-dummy-anon-key
+          EOF
+
       - name: Build Application
         run: npm run build
 
