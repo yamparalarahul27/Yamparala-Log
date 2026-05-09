@@ -21,12 +21,16 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        # npm install (not npm ci) so platform-specific optional deps —
-        # notably @rollup/rollup-linux-x64-gnu — get resolved on the
-        # Linux runner. The lockfile is generated on macOS, which omits
-        # the Linux native binary; npm ci would then fail to load it
-        # (npm/cli#4828).
-        run: npm install
+        # The committed lockfile is generated on macOS and omits install
+        # records for rollup's Linux native binaries (notably
+        # @rollup/rollup-linux-x64-gnu). Both npm ci and npm install
+        # honor the lockfile and skip these optional deps on the Linux
+        # runner, breaking vite build. Workaround per npm/cli#4828:
+        # drop the lockfile + node_modules and let npm install resolve
+        # optionals fresh for ubuntu-latest.
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Build Application
         run: npm run build
