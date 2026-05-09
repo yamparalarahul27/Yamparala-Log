@@ -1,62 +1,63 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Resource } from "@/app/components/types";
 import { apiClient } from "@/services/api-client";
 
+const RESOURCES_KEY = ["resources"] as const;
+
 export function useResources() {
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: RESOURCES_KEY,
+    queryFn: () => apiClient.resources.getAll(),
+  });
 
-  const loadResources = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadError(null);
-      const fetchedResources = await apiClient.resources.getAll();
-      setResources(fetchedResources);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "We could not load the resource library right now.";
-      setLoadError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const resources = data ?? [];
+  const loading = isLoading;
+  const loadError = error instanceof Error ? error.message : null;
 
-  useEffect(() => {
-    void loadResources();
-  }, [loadResources]);
+  const writeCache = (mutator: (current: Resource[]) => Resource[]) => {
+    queryClient.setQueryData<Resource[]>(RESOURCES_KEY, (current) =>
+      mutator(current ?? []),
+    );
+  };
 
   const checkDuplicate = async (url: string): Promise<Resource | null> => {
     return apiClient.resources.findByNormalizedUrl(url);
   };
 
   const createResource = async (resource: Omit<Resource, "id">) => {
-    const createdResource = await apiClient.resources.create(resource);
-    setResources((current) =>
-      [createdResource, ...current].sort(
+    const created = await apiClient.resources.create(resource);
+    writeCache((current) =>
+      [created, ...current].sort(
         (left, right) => new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime(),
       ),
     );
-    return createdResource;
+    return created;
   };
 
   const updateResource = async (id: string, updates: Omit<Resource, "id">) => {
-    const updatedResource = await apiClient.resources.update(id, updates);
-    setResources((current) =>
-      current.map((resource) => (resource.id === updatedResource.id ? updatedResource : resource)),
+    const updated = await apiClient.resources.update(id, updates);
+    writeCache((current) =>
+      current.map((resource) => (resource.id === updated.id ? updated : resource)),
     );
-    return updatedResource;
+    return updated;
   };
 
   const deleteResource = async (id: string) => {
     await apiClient.resources.delete(id);
-    setResources((current) => current.filter((resource) => resource.id !== id));
+    writeCache((current) => current.filter((resource) => resource.id !== id));
   };
+
+  const reload = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   return {
     resources,
     loading,
     loadError,
-    reload: loadResources,
+    reload,
     checkDuplicate,
     createResource,
     updateResource,
