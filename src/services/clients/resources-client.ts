@@ -132,11 +132,38 @@ async function supabaseRequest<T>(
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+export interface GetPageOptions {
+  cursor?: string;
+  limit: number;
+  search?: string;
+}
+
+const SEARCH_FIELDS = ["title", "notes", "description", "site_name", "author", "source"] as const;
+
+function buildSearchFilter(query: string): string {
+  // Quote the value so commas / parens / spaces in user input don't break PostgREST's or=(...) parsing.
+  // Inside the quoted value we still need to escape backslashes and double quotes.
+  const escaped = query.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const value = encodeURIComponent(`"*${escaped}*"`);
+  const filters = SEARCH_FIELDS.map((f) => `${f}.ilike.${value}`).join(",");
+  return `or=(${filters})`;
+}
+
 export class ResourcesClient {
-  async getAll(): Promise<Resource[]> {
-    const rows = await supabaseRequest<ResourceRow[]>(
-      `/${SUPABASE_TABLES.RESOURCES}?select=*&order=saved_at.desc`,
-    );
+  async getPage(options: GetPageOptions): Promise<Resource[]> {
+    const params = new URLSearchParams();
+    params.set("select", "*");
+    params.set("order", "saved_at.desc");
+    params.set("limit", String(options.limit));
+    if (options.cursor) {
+      params.set("saved_at", `lt.${options.cursor}`);
+    }
+    let path = `/${SUPABASE_TABLES.RESOURCES}?${params.toString()}`;
+    const search = options.search?.trim();
+    if (search) {
+      path += `&${buildSearchFilter(search)}`;
+    }
+    const rows = await supabaseRequest<ResourceRow[]>(path);
     return rows.map(toResource);
   }
 

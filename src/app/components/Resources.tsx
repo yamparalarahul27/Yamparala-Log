@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { AdminGate } from "@/app/components/AdminGate";
@@ -44,8 +44,20 @@ type SortValue = "newest" | "oldest" | "title";
 const SHOW_GALLERY_VIEW_TRIGGER = false;
 
 export function Resources() {
-  const { resources, loading, loadError, reload, checkDuplicate, createResource, updateResource, deleteResource } = useResources();
   const [query, setQuery] = useState("");
+  const {
+    resources,
+    loading,
+    loadError,
+    reload,
+    checkDuplicate,
+    createResource,
+    updateResource,
+    deleteResource,
+    hasNextPage,
+    isFetchingNextPage,
+    loadMore,
+  } = useResources({ search: query });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
@@ -59,34 +71,34 @@ export function Resources() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Wire the bottom sentinel to fetchNextPage. The 400px rootMargin starts the
+  // next request before the user actually hits the end of the list.
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) loadMore();
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [hasNextPage, loadMore]);
 
   const categories = Array.from(new Set(resources.map((resource) => resource.category))).sort();
   const sources = Array.from(new Set(resources.map((resource) => resource.source))).sort();
 
+  // The query string is sent to the server (see useResources). Category / source
+  // here filter only the rows already loaded — fine for narrowing within an active
+  // session; if you need a category to exhaustively cover the full library, type
+  // the category name into the search box instead.
   let filteredResources = resources.filter((resource) => {
-    const matchesQuery =
-      query.trim() === "" ||
-      [
-        resource.title,
-        resource.notes,
-        resource.url,
-        resource.source,
-        resource.category,
-        resource.toolSubcategory ?? "",
-        resource.description ?? "",
-        resource.siteName ?? "",
-        resource.contentType ?? "",
-        resource.author ?? "",
-        ...(resource.tags ?? []),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query.trim().toLowerCase());
-
     const matchesCategory = categoryFilter === "all" || resource.category === categoryFilter;
     const matchesSource = sourceFilter === "all" || resource.source === sourceFilter;
-
-    return matchesQuery && matchesCategory && matchesSource;
+    return matchesCategory && matchesSource;
   });
 
   filteredResources = [...filteredResources].sort((left, right) => {
@@ -301,7 +313,7 @@ export function Resources() {
                 <Input
                   aria-label="Search resources"
                   className="pl-9"
-                  placeholder="Search by title, notes, URL, source, or category"
+                  placeholder="Search title, notes, description, source, or author"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
@@ -382,7 +394,7 @@ export function Resources() {
                 </Card>
               ))}
             </div>
-          ) : resources.length === 0 ? (
+          ) : resources.length === 0 && !query.trim() ? (
             <Card className="rounded-3xl border-dashed border-slate-300 p-10 text-center shadow-sm">
               <div className="mx-auto max-w-lg space-y-3">
                 <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-slate-100 text-blue-700">
@@ -419,17 +431,26 @@ export function Resources() {
               </div>
             </Card>
           ) : (
-            <div className="columns-1 gap-4 space-y-4 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
-              {filteredResources.map((resource) => (
-                <ResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  isAdmin={isAdmin}
-                  onEdit={handleOpenEdit}
-                  onDelete={handleRequestDelete}
-                />
-              ))}
-            </div>
+            <>
+              <div className="columns-1 gap-4 space-y-4 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
+                {filteredResources.map((resource) => (
+                  <ResourceCard
+                    key={resource.id}
+                    resource={resource}
+                    isAdmin={isAdmin}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleRequestDelete}
+                  />
+                ))}
+              </div>
+              <div ref={sentinelRef} className="py-6 text-center text-sm text-slate-500">
+                {isFetchingNextPage
+                  ? "Loading more…"
+                  : hasNextPage
+                    ? ""
+                    : "You've reached the end."}
+              </div>
+            </>
           )}
           </>
           )}

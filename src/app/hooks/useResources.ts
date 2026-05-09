@@ -1,25 +1,69 @@
-import { useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Resource } from "@/app/components/types";
 import { apiClient } from "@/services/api-client";
 
-const RESOURCES_KEY = ["resources"] as const;
+const PAGE_SIZE = 30;
+const SEARCH_DEBOUNCE_MS = 250;
 
-export function useResources() {
+type ResourcesQueryKey = readonly ["resources", { search: string | null }];
+type ResourcesInfiniteData = InfiniteData<Resource[], string | undefined>;
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+export interface UseResourcesOptions {
+  search?: string;
+}
+
+export function useResources(options: UseResourcesOptions = {}) {
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: RESOURCES_KEY,
-    queryFn: () => apiClient.resources.getAll(),
+  const rawSearch = options.search ?? "";
+  const debouncedSearch = useDebouncedValue(rawSearch.trim(), SEARCH_DEBOUNCE_MS);
+  const queryKey: ResourcesQueryKey = ["resources", { search: debouncedSearch || null }];
+
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }) =>
+      apiClient.resources.getPage({
+        cursor: pageParam,
+        limit: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.length === PAGE_SIZE ? lastPage[lastPage.length - 1].savedAt : undefined,
   });
 
-  const resources = data ?? [];
+  const resources = data?.pages.flat() ?? [];
   const loading = isLoading;
   const loadError = error instanceof Error ? error.message : null;
 
+  // Mutate the cached infinite data by treating the flat list as the source of truth,
+  // then collapsing the pages array to a single combined page. Page boundary fidelity
+  // is sacrificed but `getNextPageParam` still computes the right next cursor from the
+  // last item, so pagination keeps working from where the user is.
   const writeCache = (mutator: (current: Resource[]) => Resource[]) => {
-    queryClient.setQueryData<Resource[]>(RESOURCES_KEY, (current) =>
-      mutator(current ?? []),
-    );
+    queryClient.setQueryData<ResourcesInfiniteData>(queryKey, (current) => {
+      if (!current) return current;
+      const flat = current.pages.flat();
+      const next = mutator(flat);
+      return { pages: [next], pageParams: [undefined] };
+    });
   };
 
   const checkDuplicate = async (url: string): Promise<Resource | null> => {
@@ -53,6 +97,12 @@ export function useResources() {
     void refetch();
   }, [refetch]);
 
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   return {
     resources,
     loading,
@@ -62,5 +112,9 @@ export function useResources() {
     createResource,
     updateResource,
     deleteResource,
+    hasNextPage: Boolean(hasNextPage),
+    isFetchingNextPage,
+    loadMore,
+    isSearching: rawSearch.trim() !== debouncedSearch,
   };
 }
