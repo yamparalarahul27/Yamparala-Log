@@ -36,9 +36,16 @@ These bias toward caution over speed. For trivial tasks, use judgment.
 
 ### Secrets & environment
 
-- No hardcoded secrets, tokens, or API keys — ever.
-- `.env*` files are never committed.
+- No hardcoded secrets, tokens, or API keys — ever. *(→ TODO: automated enforcement via `.claude/hooks/scan-secrets.js` is not yet in place.)*
+- `.env*` files are never committed (`.gitignore` is in place; *→ TODO: deny-list in `.claude/settings.json` is not yet in place*).
 - API keys and service-role keys live on the server only. Never `VITE_*` for anything sensitive — `VITE_*` values are inlined into the browser bundle at build time.
 - Never log secret values or tokens.
 - Never include secret values in error responses, client payloads, or toast messages — return generic `{ error: "…" }`.
 - No default credentials, example keys, or placeholder tokens. Use env-var reads that fail loudly on missing values in production.
+
+## Pre-public-release checklist
+
+Items that must be resolved before this catalogue is linked from any public portfolio (e.g. `hirahul.xyz`). Until then the URL is unlisted and these are deferred — but they block public release.
+
+- **RLS + auth gate** — the `resources` table has RLS enabled with permissive `using (true)` policies for select/insert/update/delete; the browser holds the Supabase anon key, so anyone with the URL can read/write/delete. The "admin" gate today is a client-side passcode in [`AdminGate.tsx`](src/app/components/AdminGate.tsx) — UI lock only, not real authorization. *(→ TODO: decision doc at `docs/security-rls-public-release.md` is not yet written.)* Recommended path is a magic-link auth gate with permissive RLS for authed users; confirm before implementing.
+- **Claude Code permissions hardening** — tighten Claude Code deny rules in a project-local `.claude/settings.json` (Read/Write/Edit mirrored, additional secret paths) and split universal vs project-specific denies into global vs project settings. *(→ TODO: project-local `.claude/settings.json` and decision doc at `docs/security-claude-permissions-public-release.md` are not yet in place.)* Once `.claude/hooks/scan-secrets.js` exists, lean on it to cover the Bash bypass that deny rules can't.
