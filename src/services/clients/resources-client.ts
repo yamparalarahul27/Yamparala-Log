@@ -21,6 +21,8 @@ interface ResourceRow {
   source: string | null;
   notes: string | null;
   image_url: string | null;
+  image_width: number | null;
+  image_height: number | null;
   saved_at: string | null;
   created_at?: string | null;
   description: string | null;
@@ -55,6 +57,8 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
     source: String(row.source ?? inferSource(String(row.url ?? ""))),
     notes: String(row.notes ?? ""),
     imageUrl: row.image_url ?? null,
+    imageWidth: typeof row.image_width === "number" ? row.image_width : null,
+    imageHeight: typeof row.image_height === "number" ? row.image_height : null,
     savedAt: String(row.saved_at ?? new Date().toISOString()),
     description: (row.description as string) ?? null,
     siteName: (row.site_name as string) ?? null,
@@ -78,6 +82,8 @@ function toRow(resource: CreateResourceDto | UpdateResourceDto) {
     source: resource.source,
     notes: resource.notes,
     image_url: resource.imageUrl ?? null,
+    image_width: resource.imageWidth ?? null,
+    image_height: resource.imageHeight ?? null,
     saved_at: resource.savedAt,
     description: resource.description ?? null,
     site_name: resource.siteName ?? null,
@@ -126,11 +132,38 @@ async function supabaseRequest<T>(
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+export interface GetPageOptions {
+  cursor?: string;
+  limit: number;
+  search?: string;
+}
+
+const SEARCH_FIELDS = ["title", "notes", "description", "site_name", "author", "source"] as const;
+
+function buildSearchFilter(query: string): string {
+  // Quote the value so commas / parens / spaces in user input don't break PostgREST's or=(...) parsing.
+  // Inside the quoted value we still need to escape backslashes and double quotes.
+  const escaped = query.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const value = encodeURIComponent(`"*${escaped}*"`);
+  const filters = SEARCH_FIELDS.map((f) => `${f}.ilike.${value}`).join(",");
+  return `or=(${filters})`;
+}
+
 export class ResourcesClient {
-  async getAll(): Promise<Resource[]> {
-    const rows = await supabaseRequest<ResourceRow[]>(
-      `/${SUPABASE_TABLES.RESOURCES}?select=*&order=saved_at.desc`,
-    );
+  async getPage(options: GetPageOptions): Promise<Resource[]> {
+    const params = new URLSearchParams();
+    params.set("select", "*");
+    params.set("order", "saved_at.desc");
+    params.set("limit", String(options.limit));
+    if (options.cursor) {
+      params.set("saved_at", `lt.${options.cursor}`);
+    }
+    let path = `/${SUPABASE_TABLES.RESOURCES}?${params.toString()}`;
+    const search = options.search?.trim();
+    if (search) {
+      path += `&${buildSearchFilter(search)}`;
+    }
+    const rows = await supabaseRequest<ResourceRow[]>(path);
     return rows.map(toResource);
   }
 

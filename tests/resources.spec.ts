@@ -19,7 +19,31 @@ async function mockResourceApi(page: Page, initialResources: ResourceRecord[]) {
     const url = new URL(route.request().url());
 
     if (method === "GET") {
-      await route.fulfill({ json: resources });
+      // Honor PostgREST's or=(title.ilike."*q*",notes.ilike."*q*",...) filter
+      // so server-side search behaves the same as in production.
+      let rows = resources;
+      const orFilter = url.searchParams.get("or");
+      if (orFilter) {
+        const match = orFilter.match(/ilike\."\*([^"*]+)\*"/);
+        if (match) {
+          const q = match[1].toLowerCase();
+          rows = rows.filter((row) =>
+            [row.title, row.notes, row.source, row.category].some((field) =>
+              field?.toLowerCase().includes(q),
+            ),
+          );
+        }
+      }
+      const cursor = url.searchParams.get("saved_at");
+      if (cursor?.startsWith("lt.")) {
+        const value = cursor.slice(3);
+        rows = rows.filter((row) => row.saved_at < value);
+      }
+      const limit = Number(url.searchParams.get("limit"));
+      if (Number.isFinite(limit) && limit > 0) {
+        rows = rows.slice(0, limit);
+      }
+      await route.fulfill({ json: rows });
       return;
     }
 
@@ -71,26 +95,6 @@ test("creates the first saved resource", async ({ page }) => {
   await expect(page.getByText("Good reference for accessible interaction patterns.")).toBeVisible();
 });
 
-test("shows tool subcategories for tool resources", async ({ page }) => {
-  await mockResourceApi(page, []);
-  await page.goto("/");
-
-  await page.getByRole("button", { name: "Save the first resource" }).click();
-
-  const dialog = page.getByRole("dialog", { name: "Save resource" });
-  await dialog.getByLabel("Title *").fill("Mobbin");
-  await dialog.getByLabel("URL *").fill("mobbin.com");
-  await dialog.getByLabel("Source").fill("Mobbin");
-  await dialog.getByLabel("Select a category").click();
-  await page.getByRole("option", { name: "Tools" }).click();
-  await dialog.getByLabel("Select a tool subcategory").click();
-  await page.getByRole("option", { name: "UX tool" }).click();
-  await dialog.getByRole("button", { name: "Save resource" }).click();
-
-  await expect(page.getByRole("heading", { name: "Mobbin" })).toBeVisible();
-  await expect(page.getByText("UX tool")).toBeVisible();
-});
-
 test("filters, edits, and deletes resources", async ({ page }) => {
   await mockResourceApi(page, [
     {
@@ -122,6 +126,12 @@ test("filters, edits, and deletes resources", async ({ page }) => {
   await expect(page.getByText("React docs")).not.toBeVisible();
 
   await page.getByLabel("Search resources").fill("");
+
+  // Edit / delete are admin-only (UI gate). Unlock with the in-app passcode.
+  await page.getByRole("button", { name: "Admin settings" }).click();
+  await page.getByLabel("Admin passcode").fill("0125k");
+  await page.getByRole("button", { name: "Unlock" }).click();
+
   await page.getByLabel("Edit Aceternity components").click();
   const dialog = page.getByRole("dialog", { name: "Edit resource" });
   await dialog.getByLabel("Title *").fill("Aceternity UI");

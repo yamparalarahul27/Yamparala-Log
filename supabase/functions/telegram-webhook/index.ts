@@ -105,6 +105,8 @@ function parseMessage(text: string): {
 interface PageMeta {
   title: string | null;
   imageUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   description: string | null;
   siteName: string | null;
   contentType: string | null;
@@ -116,7 +118,8 @@ interface PageMeta {
 }
 
 const EMPTY_META: PageMeta = {
-  title: null, imageUrl: null, description: null, siteName: null,
+  title: null, imageUrl: null, imageWidth: null, imageHeight: null,
+  description: null, siteName: null,
   contentType: null, tags: null, author: null, publishedAt: null,
   language: null, readingTimeMinutes: null,
 };
@@ -269,6 +272,8 @@ serve(async (req) => {
         source,
         notes,
         image_url: meta.imageUrl,
+        image_width: meta.imageWidth,
+        image_height: meta.imageHeight,
         description: meta.description,
         site_name: meta.siteName,
         content_type: meta.contentType,

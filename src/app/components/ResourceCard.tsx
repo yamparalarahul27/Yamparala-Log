@@ -16,13 +16,24 @@ type ResourceCardProps = {
 
 export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCardProps) {
   const tweetId = getTweetId(resource.url);
+  // Reserve the card's image area at the OG-supplied aspect ratio so the lazy
+  // <img> slots in without shifting anything below it. Falls back to OG's
+  // default 1.91:1 when the publisher didn't expose width/height (older rows
+  // saved before the metadata extractor started capturing dims).
+  const imageAspectRatio =
+    resource.imageWidth && resource.imageHeight
+      ? `${resource.imageWidth} / ${resource.imageHeight}`
+      : "1.91 / 1";
 
   return (
     <Card
       className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm break-inside-avoid")}
     >
       {tweetId ? (
-        <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
+        // Reserve a pessimistic 400px so the iframe widget can render without
+        // pushing siblings down. Twitter's widget self-sizes, so some shift
+        // remains for tweets that are very tall or very short.
+        <div className="min-h-[400px] border-b border-slate-100 bg-slate-50 px-3 py-2">
           <TweetEmbed tweetId={tweetId} />
         </div>
       ) : resource.imageUrl ? (
@@ -30,7 +41,8 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
           <img
             src={proxyImage(resource.imageUrl) ?? resource.imageUrl}
             alt=""
-            className="aspect-[1.91/1] w-full bg-slate-100 object-cover"
+            className="w-full bg-slate-100 object-cover"
+            style={{ aspectRatio: imageAspectRatio }}
             loading="lazy"
             decoding="async"
             onError={(e) => {
