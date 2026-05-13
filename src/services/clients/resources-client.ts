@@ -149,7 +149,63 @@ function buildSearchFilter(query: string): string {
   return `or=(${filters})`;
 }
 
+export interface ResourceLite {
+  id: string;
+  title: string;
+  url: string;
+  category: string;
+  source: string;
+  savedAt: string;
+}
+
+interface ResourceLiteRow {
+  id: string;
+  title: string | null;
+  url: string | null;
+  category: string | null;
+  source: string | null;
+  saved_at: string | null;
+}
+
+// Supabase PostgREST caps a single request at `db-max-rows` (1000 by default).
+// We loop on the saved_at cursor so the catalogue can grow past that ceiling
+// without breaking list view.
+const LIST_PAGE_SIZE = 1000;
+
 export class ResourcesClient {
+  async getAllLight(): Promise<ResourceLite[]> {
+    const all: ResourceLite[] = [];
+    let cursor: string | undefined;
+    while (true) {
+      const params = new URLSearchParams();
+      params.set("select", "id,title,url,category,source,saved_at");
+      params.set("order", "saved_at.desc");
+      params.set("limit", String(LIST_PAGE_SIZE));
+      if (cursor) {
+        params.set("saved_at", `lt.${cursor}`);
+      }
+      const rows = await supabaseRequest<ResourceLiteRow[]>(
+        `/${SUPABASE_TABLES.RESOURCES}?${params.toString()}`,
+      );
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        const url = String(row.url ?? "");
+        all.push({
+          id: String(row.id),
+          title: String(row.title ?? "Untitled resource"),
+          url,
+          category: String(row.category ?? "Other"),
+          source: String(row.source ?? inferSource(url)),
+          savedAt: String(row.saved_at ?? new Date().toISOString()),
+        });
+      }
+      if (rows.length < LIST_PAGE_SIZE) break;
+      cursor = rows[rows.length - 1].saved_at ?? undefined;
+      if (!cursor) break;
+    }
+    return all;
+  }
+
   async getPage(options: GetPageOptions): Promise<Resource[]> {
     const params = new URLSearchParams();
     params.set("select", "*");

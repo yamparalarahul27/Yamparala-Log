@@ -1,8 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { apiClient } from "@/services/api-client";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { AdminGate } from "@/app/components/AdminGate";
 import { ResourceCard } from "@/app/components/ResourceCard";
+import { SearchModal } from "@/app/components/SearchModal";
+import { FilterPopover, type SortValue } from "@/app/components/FilterPopover";
 import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { resourceToGalleryItem } from "@/app/components/gallery-utils";
@@ -19,32 +23,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog";
-import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
-import { Input } from "@/app/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import {
   ArrowUpRight,
   FolderOpen,
   GalleryHorizontalEnd,
   LayoutGrid,
+  List,
   Plus,
   Search,
 } from "lucide-react";
 
-type SortValue = "newest" | "oldest" | "title";
 const SHOW_GALLERY_VIEW_TRIGGER = false;
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+type TabValue = "resources" | "this-week" | "tasks";
 
 export function Resources() {
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const {
     resources,
     loading,
@@ -57,12 +55,27 @@ export function Resources() {
     hasNextPage,
     isFetchingNextPage,
     loadMore,
+    isSearching,
   } = useResources({ search: query });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
-  const [activeTab, setActiveTab] = useState<"resources" | "tasks">("resources");
-  const [viewMode, setViewMode] = useState<"grid" | "gallery">("grid");
+  const [activeTab, setActiveTab] = useState<TabValue>("resources");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "gallery">("grid");
+
+  // List view loads every resource (lean payload) in one shot. Enabled only when
+  // the user actually flips to list view to keep the page-load cost off the
+  // grid-view default.
+  const {
+    data: listAll = [],
+    isLoading: listLoading,
+    error: listError,
+  } = useQuery({
+    queryKey: ["resources", "list-all"],
+    queryFn: () => apiClient.resources.getAllLight(),
+    enabled: viewMode === "list",
+    staleTime: 60_000,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogSaving, setDialogSaving] = useState(false);
@@ -88,6 +101,19 @@ export function Resources() {
     return () => io.disconnect();
   }, [hasNextPage, loadMore]);
 
+  // ⌥+Space opens the search palette. Guarded against firing while another
+  // dialog (add/edit, delete confirm) is already open.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (!event.altKey || event.code !== "Space") return;
+      if (dialogOpen || resourceToDelete) return;
+      event.preventDefault();
+      setSearchOpen(true);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [dialogOpen, resourceToDelete]);
+
   const categories = Array.from(new Set(resources.map((resource) => resource.category))).sort();
   const sources = Array.from(new Set(resources.map((resource) => resource.source))).sort();
 
@@ -95,10 +121,13 @@ export function Resources() {
   // here filter only the rows already loaded — fine for narrowing within an active
   // session; if you need a category to exhaustively cover the full library, type
   // the category name into the search box instead.
+  const weekCutoff = Date.now() - ONE_WEEK_MS;
   let filteredResources = resources.filter((resource) => {
     const matchesCategory = categoryFilter === "all" || resource.category === categoryFilter;
     const matchesSource = sourceFilter === "all" || resource.source === sourceFilter;
-    return matchesCategory && matchesSource;
+    const matchesWeek =
+      activeTab !== "this-week" || new Date(resource.savedAt).getTime() >= weekCutoff;
+    return matchesCategory && matchesSource && matchesWeek;
   });
 
   filteredResources = [...filteredResources].sort((left, right) => {
@@ -192,34 +221,7 @@ export function Resources() {
     <>
       <main className="min-h-dvh">
         <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-          <Card className="rounded-3xl border-slate-200 p-6 shadow-sm sm:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl space-y-3">
-                <Badge variant="secondary" className="w-fit bg-blue-50 text-blue-700">
-                  Rahul's Log
-                </Badge>
-                <h1 className="text-4xl font-semibold text-slate-950 text-balance sm:text-5xl">
-                  Save every useful link in one place.
-                </h1>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                {isAdmin && (
-                  <Button className="gap-2" onClick={handleOpenCreate}>
-                    <Plus className="size-4" />
-                    Save resource
-                  </Button>
-                )}
-                <AdminGate
-                  isAdmin={isAdmin}
-                  onUnlock={() => setIsAdmin(true)}
-                  onLock={() => setIsAdmin(false)}
-                />
-              </div>
-            </div>
-          </Card>
-
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex gap-2">
               <Button
                 variant={activeTab === "resources" ? "default" : "outline"}
@@ -228,34 +230,90 @@ export function Resources() {
                 Resources
               </Button>
               <Button
+                variant={activeTab === "this-week" ? "default" : "outline"}
+                onClick={() => setActiveTab("this-week")}
+              >
+                This Week
+              </Button>
+              <Button
                 variant={activeTab === "tasks" ? "default" : "outline"}
                 onClick={() => setActiveTab("tasks")}
               >
                 Tasks
               </Button>
             </div>
-            {activeTab === "resources" && (
-              <div className="flex gap-1">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="icon"
-                  aria-label="Grid view"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <LayoutGrid className="size-4" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search resources"
+              >
+                <Search className="size-4" />
+                <span className="hidden sm:inline">Search</span>
+                <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">
+                  ⌥ Space
+                </kbd>
+              </Button>
+              {activeTab !== "tasks" && (
+                <FilterPopover
+                  categories={categories}
+                  sources={sources}
+                  categoryFilter={categoryFilter}
+                  sourceFilter={sourceFilter}
+                  sortBy={sortBy}
+                  onCategoryChange={setCategoryFilter}
+                  onSourceChange={setSourceFilter}
+                  onSortChange={setSortBy}
+                  onClear={() => {
+                    setCategoryFilter("all");
+                    setSourceFilter("all");
+                    setSortBy("newest");
+                  }}
+                />
+              )}
+              {isAdmin && (
+                <Button className="gap-2" onClick={handleOpenCreate}>
+                  <Plus className="size-4" />
+                  Save resource
                 </Button>
-                {SHOW_GALLERY_VIEW_TRIGGER && (
+              )}
+              <AdminGate
+                isAdmin={isAdmin}
+                onUnlock={() => setIsAdmin(true)}
+                onLock={() => setIsAdmin(false)}
+              />
+              {activeTab !== "tasks" && (
+                <div className="flex gap-1">
                   <Button
-                    variant={viewMode === "gallery" ? "default" : "ghost"}
+                    variant={viewMode === "grid" ? "default" : "ghost"}
                     size="icon"
-                    aria-label="Gallery view"
-                    onClick={() => setViewMode("gallery")}
+                    aria-label="Grid view"
+                    onClick={() => setViewMode("grid")}
                   >
-                    <GalleryHorizontalEnd className="size-4" />
+                    <LayoutGrid className="size-4" />
                   </Button>
-                )}
-              </div>
-            )}
+                  <Button
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    size="icon"
+                    aria-label="List view"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="size-4" />
+                  </Button>
+                  {SHOW_GALLERY_VIEW_TRIGGER && (
+                    <Button
+                      variant={viewMode === "gallery" ? "default" : "ghost"}
+                      size="icon"
+                      aria-label="Gallery view"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <GalleryHorizontalEnd className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {activeTab === "tasks" ? (
@@ -296,7 +354,7 @@ export function Resources() {
                 );
               })()}
             </Card>
-          ) : viewMode === "gallery" ? (
+          ) : activeTab === "resources" && viewMode === "gallery" ? (
           <div className="h-[70vh] w-full overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
             <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400">Loading gallery...</div>}>
               <CanvasGallery
@@ -304,62 +362,78 @@ export function Resources() {
               />
             </Suspense>
           </div>
+          ) : viewMode === "list" ? (
+          (() => {
+            const listFiltered = listAll.filter((r) => {
+              const matchesCategory = categoryFilter === "all" || r.category === categoryFilter;
+              const matchesSource = sourceFilter === "all" || r.source === sourceFilter;
+              const matchesWeek =
+                activeTab !== "this-week" || new Date(r.savedAt).getTime() >= weekCutoff;
+              return matchesCategory && matchesSource && matchesWeek;
+            });
+            if (listError) {
+              return (
+                <Card className="rounded-3xl border-red-200 bg-red-50 p-6 shadow-sm">
+                  <p className="text-sm text-red-700">
+                    {listError instanceof Error ? listError.message : "Could not load the list."}
+                  </p>
+                </Card>
+              );
+            }
+            if (listLoading) {
+              return (
+                <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
+                  <div className="flex flex-col divide-y divide-slate-100">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <div key={i} className="flex flex-col gap-1 py-2.5">
+                        <Skeleton className="h-4 w-3/5" />
+                        <Skeleton className="h-3 w-2/5" />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              );
+            }
+            if (listFiltered.length === 0) {
+              return (
+                <Card className="rounded-3xl border-slate-200 p-10 text-center shadow-sm">
+                  <p className="text-slate-600 text-pretty">
+                    {activeTab === "this-week"
+                      ? "Nothing new this week — yet."
+                      : "No resources match these filters."}
+                  </p>
+                </Card>
+              );
+            }
+            return (
+              <Card className="rounded-3xl border-slate-200 p-2 shadow-sm sm:p-3">
+                <ul className="flex flex-col divide-y divide-slate-100">
+                  {listFiltered.map((r) => (
+                    <li key={r.id}>
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-baseline gap-3 rounded-md px-3 py-2 transition-colors hover:bg-slate-50"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-sm text-slate-900">
+                          {r.title}
+                        </span>
+                        <span className="shrink-0 truncate text-xs text-slate-500">
+                          {getHostname(r.url)}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="px-3 py-2 text-center text-xs text-slate-400">
+                  {listFiltered.length} {listFiltered.length === 1 ? "resource" : "resources"}
+                </p>
+              </Card>
+            );
+          })()
           ) : (
           <>
-          <Card className="rounded-3xl border-slate-200 p-4 shadow-sm sm:p-6">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  aria-label="Search resources"
-                  className="pl-9"
-                  placeholder="Search title, notes, description, source, or author"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </div>
-
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger aria-label="Filter by category">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger aria-label="Filter by source">
-                  <SelectValue placeholder="All sources" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
-                  {sources.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
-                <SelectTrigger aria-label="Sort resources">
-                  <SelectValue placeholder="Newest first" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                  <SelectItem value="title">Title A-Z</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
           {loadError ? (
             <Card className="rounded-3xl border-red-200 bg-red-50 p-6 shadow-sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -413,21 +487,32 @@ export function Resources() {
           ) : filteredResources.length === 0 ? (
             <Card className="rounded-3xl border-slate-200 p-10 text-center shadow-sm">
               <div className="mx-auto max-w-lg space-y-3">
-                <h2 className="text-2xl font-semibold text-slate-950 text-balance">No resources match these filters.</h2>
+                <h2 className="text-2xl font-semibold text-slate-950 text-balance">
+                  {activeTab === "this-week"
+                    ? "Nothing new this week — yet."
+                    : "No resources match these filters."}
+                </h2>
                 <p className="text-slate-600 text-pretty">
-                  Try a broader search or clear the category and source filters to bring everything back.
+                  {activeTab === "this-week"
+                    ? "Resources you save in the next seven days will show up here."
+                    : "Try a broader search or clear the category and source filters to bring everything back."}
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQuery("");
-                    setCategoryFilter("all");
-                    setSourceFilter("all");
-                    setSortBy("newest");
-                  }}
-                >
-                  Clear filters
-                </Button>
+                {activeTab === "this-week" ? (
+                  <Button variant="outline" onClick={() => setActiveTab("resources")}>
+                    Back to all resources
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCategoryFilter("all");
+                      setSourceFilter("all");
+                      setSortBy("newest");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
               </div>
             </Card>
           ) : (
@@ -456,6 +541,18 @@ export function Resources() {
           )}
         </div>
       </main>
+
+      <SearchModal
+        open={searchOpen}
+        onOpenChange={(nextOpen) => {
+          setSearchOpen(nextOpen);
+          if (!nextOpen) setQuery("");
+        }}
+        query={query}
+        onQueryChange={setQuery}
+        resources={resources}
+        isSearching={isSearching}
+      />
 
       {dialogOpen && (
         <AddResourceDialog
