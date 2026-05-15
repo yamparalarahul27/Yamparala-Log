@@ -81,7 +81,9 @@ test("creates the first saved resource", async ({ page }) => {
   await mockResourceApi(page, []);
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Save every useful link in one place." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Start your library with the next link you save." }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Save the first resource" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Save resource" });
@@ -121,11 +123,14 @@ test("filters, edits, and deletes resources", async ({ page }) => {
 
   await page.goto("/");
 
-  await page.getByLabel("Search resources").fill("Aceternity");
-  await expect(page.getByText("Aceternity components")).toBeVisible();
-  await expect(page.getByText("React docs")).not.toBeVisible();
-
-  await page.getByLabel("Search resources").fill("");
+  // Search lives in a command-palette modal opened from the header button.
+  await page.getByRole("button", { name: "Search resources" }).click();
+  const searchDialog = page.getByRole("dialog");
+  await searchDialog.getByRole("textbox", { name: "Search resources" }).fill("Aceternity");
+  await expect(searchDialog.getByText("Aceternity components")).toBeVisible();
+  await expect(searchDialog.getByText("React docs")).not.toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(searchDialog).not.toBeVisible();
 
   // Edit / delete are admin-only (UI gate). Unlock with the in-app passcode.
   await page.getByRole("button", { name: "Admin settings" }).click();
