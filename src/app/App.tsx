@@ -1,5 +1,6 @@
 import { Resources } from "@/app/components/Resources";
 import { Toaster } from "sonner";
+import { Agentation } from "agentation";
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
     >
       <Resources />
       <Toaster position="top-right" richColors />
+      {import.meta.env.DEV && <Agentation />}
     </div>
   );
 }
