@@ -25,6 +25,13 @@ import {
 } from "@/app/components/ui/alert-dialog";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import {
   ArrowUpRight,
@@ -222,7 +229,7 @@ export function Resources() {
       <main className="min-h-dvh">
         <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex gap-2">
+            <div className="hidden gap-2 sm:flex">
               <Button
                 variant={activeTab === "resources" ? "default" : "outline"}
                 onClick={() => setActiveTab("resources")}
@@ -241,6 +248,18 @@ export function Resources() {
               >
                 Tasks
               </Button>
+            </div>
+            <div className="sm:hidden">
+              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
+                <SelectTrigger aria-label="Switch view" className="min-w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="resources">Resources</SelectItem>
+                  <SelectItem value="this-week">This Week</SelectItem>
+                  <SelectItem value="tasks">Tasks</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -273,9 +292,13 @@ export function Resources() {
                 />
               )}
               {isAdmin && (
-                <Button className="gap-2" onClick={handleOpenCreate}>
+                <Button
+                  className="gap-2"
+                  onClick={handleOpenCreate}
+                  aria-label="Save resource"
+                >
                   <Plus className="size-4" />
-                  Save resource
+                  <span className="hidden sm:inline">Save resource</span>
                 </Button>
               )}
               <AdminGate

@@ -47,10 +47,11 @@ export function FilterPopover({
   return (
     <Popover>
       <PopoverTrigger
+        aria-label="Filters"
         className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
       >
         <SlidersHorizontal className="size-4" />
-        Filters
+        <span className="hidden sm:inline">Filters</span>
         {activeCount > 0 && (
           <span className="ml-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
             {activeCount}
