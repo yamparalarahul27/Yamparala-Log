@@ -120,6 +120,14 @@ test("filters, edits, and deletes resources", async ({ page }) => {
       saved_at: "2026-03-19T10:00:00.000Z",
     },
   ]);
+  await page.addInitScript(() => {
+    const pageWindow = window as Window & { __openedResourceUrls: string[] };
+    pageWindow.__openedResourceUrls = [];
+    window.open = ((url?: string | URL) => {
+      pageWindow.__openedResourceUrls.push(String(url ?? ""));
+      return null;
+    }) as typeof window.open;
+  });
 
   await page.goto("/");
 
@@ -129,8 +137,37 @@ test("filters, edits, and deletes resources", async ({ page }) => {
   await searchDialog.getByRole("textbox", { name: "Search resources" }).fill("Aceternity");
   await expect(searchDialog.getByText("Aceternity components")).toBeVisible();
   await expect(searchDialog.getByText("React docs")).not.toBeVisible();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
   await expect(searchDialog).not.toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __openedResourceUrls?: string[] }).__openedResourceUrls ?? [],
+    ),
+  ).toEqual([]);
+  await expect(page.getByRole("button", { name: "Search resources" })).toContainText(
+    "Aceternity",
+  );
+  await expect(page.getByRole("heading", { name: "Aceternity components" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "React docs" })).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Search resources" }).click();
+  await expect(searchDialog.getByRole("textbox", { name: "Search resources" })).toHaveValue(
+    "Aceternity",
+  );
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(searchDialog).not.toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { __openedResourceUrls?: string[] }).__openedResourceUrls ?? [],
+    ),
+  ).toEqual(["https://ui.aceternity.com"]);
+  await page.getByRole("button", { name: "Search resources" }).click();
+  await searchDialog.getByRole("textbox", { name: "Search resources" }).fill("");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "React docs" })).toBeVisible();
 
   // Edit / delete are admin-only (UI gate). Unlock with the in-app passcode.
   await page.getByRole("button", { name: "Admin settings" }).click();
