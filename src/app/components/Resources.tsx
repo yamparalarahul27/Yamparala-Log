@@ -69,6 +69,7 @@ export function Resources() {
   const [sortBy, setSortBy] = useState<SortValue>("newest");
   const [activeTab, setActiveTab] = useState<TabValue>("resources");
   const [viewMode, setViewMode] = useState<"grid" | "list" | "gallery">("grid");
+  const activeSearch = query.trim();
 
   // List view loads every resource (lean payload) in one shot. Enabled only when
   // the user actually flips to list view to keep the page-load cost off the
@@ -264,12 +265,14 @@ export function Resources() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                className="gap-2"
+                className="min-w-0 gap-2"
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search resources"
               >
                 <Search className="size-4" />
-                <span className="hidden sm:inline">Search</span>
+                <span className="hidden max-w-[12rem] truncate sm:inline">
+                  {activeSearch || "Search"}
+                </span>
                 <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">
                   ⌥ Space
                 </kbd>
@@ -567,12 +570,10 @@ export function Resources() {
 
       <SearchModal
         open={searchOpen}
-        onOpenChange={(nextOpen) => {
-          setSearchOpen(nextOpen);
-          if (!nextOpen) setQuery("");
-        }}
+        onOpenChange={setSearchOpen}
         query={query}
         onQueryChange={setQuery}
+        onSubmitQuery={() => setSearchOpen(false)}
         resources={resources}
         isSearching={isSearching}
       />

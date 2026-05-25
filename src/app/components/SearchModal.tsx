@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Search } from "lucide-react";
 import { Resource } from "@/app/components/types";
@@ -12,6 +12,7 @@ interface SearchModalProps {
   onOpenChange: (open: boolean) => void;
   query: string;
   onQueryChange: (query: string) => void;
+  onSubmitQuery: () => void;
   resources: Resource[];
   isSearching: boolean;
 }
@@ -23,20 +24,22 @@ export function SearchModal({
   onOpenChange,
   query,
   onQueryChange,
+  onSubmitQuery,
   resources,
   isSearching,
 }: SearchModalProps) {
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const trimmed = query.trim();
-  const visible = trimmed ? resources.slice(0, MAX_RESULTS) : [];
+  const visible = trimmed && !isSearching ? resources.slice(0, MAX_RESULTS) : [];
 
   useEffect(() => {
-    setHighlightedIndex(0);
+    setHighlightedIndex(null);
   }, [trimmed, resources.length]);
 
   useEffect(() => {
+    if (highlightedIndex === null) return;
     const node = listRef.current?.querySelector<HTMLElement>(
       `[data-index="${highlightedIndex}"]`,
     );
@@ -48,15 +51,29 @@ export function SearchModal({
     onOpenChange(false);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const moveHighlight = (direction: 1 | -1) => {
+    if (visible.length === 0) return;
+    setHighlightedIndex((current) => {
+      if (current === null) return direction === 1 ? 0 : visible.length - 1;
+      return direction === 1
+        ? Math.min(current + 1, visible.length - 1)
+        : Math.max(current - 1, 0);
+    });
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setHighlightedIndex((i) => Math.min(i + 1, Math.max(visible.length - 1, 0)));
+      moveHighlight(1);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setHighlightedIndex((i) => Math.max(i - 1, 0));
+      moveHighlight(-1);
     } else if (event.key === "Enter") {
       event.preventDefault();
+      if (highlightedIndex === null) {
+        if (trimmed) onSubmitQuery();
+        return;
+      }
       const item = visible[highlightedIndex];
       if (item) openResource(item);
     }
@@ -76,7 +93,8 @@ export function SearchModal({
         >
           <DialogPrimitive.Title className="sr-only">Search resources</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Search title, notes, source, or author. Use arrow keys to navigate, Enter to open.
+            Search title, notes, source, or author. Press Enter to apply the search, or use arrow
+            keys or hover to select a result and open it.
           </DialogPrimitive.Description>
 
           <div className="flex items-center gap-3 border-b border-slate-100 px-4">
@@ -106,7 +124,7 @@ export function SearchModal({
               </p>
             ) : (
               visible.map((resource, index) => {
-                const isActive = index === highlightedIndex;
+                const isActive = highlightedIndex === index;
                 return (
                   <button
                     key={resource.id}
@@ -139,7 +157,7 @@ export function SearchModal({
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
             <span>
               <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
-              open{" · "}
+              apply/open selected{" · "}
               <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
               navigate{" · "}
               <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">esc</kbd>{" "}

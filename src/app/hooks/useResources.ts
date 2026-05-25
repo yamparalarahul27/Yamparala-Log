@@ -36,6 +36,7 @@ export function useResources(options: UseResourcesOptions = {}) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
   } = useInfiniteQuery({
     queryKey,
     queryFn: ({ pageParam }) =>
@@ -115,6 +116,8 @@ export function useResources(options: UseResourcesOptions = {}) {
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
     loadMore,
-    isSearching: rawSearch.trim() !== debouncedSearch,
+    isSearching:
+      rawSearch.trim() !== debouncedSearch ||
+      (Boolean(debouncedSearch) && isFetching && !isFetchingNextPage),
   };
 }
