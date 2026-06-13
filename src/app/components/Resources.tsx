@@ -47,6 +47,11 @@ const SHOW_GALLERY_VIEW_TRIGGER = false;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 type TabValue = "resources" | "this-week" | "tasks";
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
 export function Resources() {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -109,11 +114,12 @@ export function Resources() {
     return () => io.disconnect();
   }, [hasNextPage, loadMore]);
 
-  // ⌥+Space opens the search palette. Guarded against firing while another
+  // "/" opens the search palette. Guarded against firing while another
   // dialog (add/edit, delete confirm) is already open.
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (!event.altKey || event.code !== "Space") return;
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isEditableTarget(event.target)) return;
       if (dialogOpen || resourceToDelete) return;
       event.preventDefault();
       setSearchOpen(true);
@@ -274,7 +280,7 @@ export function Resources() {
                   {activeSearch || "Search"}
                 </span>
                 <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">
-                  ⌥ Space
+                  /
                 </kbd>
               </Button>
               {activeTab !== "tasks" && (

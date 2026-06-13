@@ -132,8 +132,16 @@ test("filters, edits, and deletes resources", async ({ page }) => {
   await page.goto("/");
 
   // Search lives in a command-palette modal opened from the header button.
-  await page.getByRole("button", { name: "Search resources" }).click();
+  await expect(page.getByRole("button", { name: "Search resources" })).toContainText("/");
+  await page.keyboard.press("Alt+Space");
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.keyboard.press("/");
   const searchDialog = page.getByRole("dialog");
+  await expect(searchDialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(searchDialog).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Search resources" }).click();
   await searchDialog.getByRole("textbox", { name: "Search resources" }).fill("Aceternity");
   await expect(searchDialog.getByText("Aceternity components")).toBeVisible();
   await expect(searchDialog.getByText("React docs")).not.toBeVisible();
