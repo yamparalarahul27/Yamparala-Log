@@ -9,7 +9,7 @@ export default function App() {
       style={{ backgroundImage: "url('/images/Wallpaper.png')" }}
     >
       <Resources />
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-center" richColors />
       {import.meta.env.DEV && <Agentation />}
     </div>
   );
