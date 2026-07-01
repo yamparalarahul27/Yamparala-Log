@@ -115,6 +115,16 @@ Improve the link-ingest pipeline so that:
 
 ---
 
+## Tools to check out
+
+Not features — tooling worth evaluating before it's adopted. Listed so it isn't lost; nothing installed or scheduled.
+
+### transitions.dev/refine — live transition tuning
+
+- **What:** A CLI + AI-agent skill ([transitions.dev/refine](https://transitions.dev/refine)) that docks onto the running app and lets you tune CSS/Tailwind transitions live on a timeline, with an agent suggesting motion refinements. Run via `npx transitions-refine live` (Cursor / Claude Code / Codex integration; supports plain CSS, CSS Modules, styled-components, Tailwind, inline styles).
+- **Why it might fit:** The motion system in [CLAUDE.md](../CLAUDE.md) leans hard on a fixed easing set and deliberate entrances/press feedback. A live tuner would make dialling those curves in on real components faster than editing-and-reloading.
+- **Before adopting (decide first):** whether it's a dev-only dependency, how it interacts with our house easing tokens (does it produce one-off cubic-beziers we'd have to fold back into `var(--ease-*)`?), and whether the agent-poller mode is worth wiring into this project's workflow.
+
 ## How to pick the next one
 
 When picking up from this list, do not start coding. Open the relevant section, resolve its "Open questions", produce an ASCII layout (for #1 and #2) or an interface sketch (for #3), get sign-off, then build.
