@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useTheme } from "@/app/hooks/useTheme";
+
 export function TweetEmbed({ tweetId }: { tweetId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const { theme } = useTheme();
 
   // Only load the widget when the card scrolls near the viewport
   useEffect(() => {
@@ -28,7 +31,7 @@ export function TweetEmbed({ tweetId }: { tweetId: string }) {
       if (containerRef.current && w.twttr?.widgets) {
         containerRef.current.innerHTML = "";
         w.twttr.widgets.createTweet(tweetId, containerRef.current, {
-          theme: "light",
+          theme,
           conversation: "none",
           dnt: true,
         });
@@ -49,14 +52,14 @@ export function TweetEmbed({ tweetId }: { tweetId: string }) {
         existing.addEventListener("load", render);
       }
     }
-  }, [tweetId, visible]);
+  }, [tweetId, visible, theme]);
 
   return (
     <div ref={wrapperRef} className="max-w-full overflow-hidden [&_iframe]:!max-w-full">
       {visible ? (
         <div ref={containerRef} />
       ) : (
-        <div className="min-h-[120px] animate-pulse rounded-lg bg-slate-100" />
+        <div className="min-h-[120px] animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
       )}
     </div>
   );

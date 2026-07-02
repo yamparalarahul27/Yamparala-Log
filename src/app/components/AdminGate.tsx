@@ -91,14 +91,14 @@ export function AdminGate({ isAdmin, onUnlock, onLock }: AdminGateProps) {
           {/* Panel — bottom sheet on mobile, dropdown on desktop */}
           <div
             className={cn(
-              "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-4 pb-6 shadow-lg",
+              "fixed inset-x-0 bottom-0 z-50 h-[50vh] overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 pb-6 shadow-lg",
               "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:h-auto sm:w-64 sm:rounded-xl sm:p-3 sm:pb-3",
             )}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden" />
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700 sm:hidden" />
             {isAdmin ? (
               <div className="space-y-2">
-                <p className="text-sm text-slate-600">Admin mode enabled</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Admin mode enabled</p>
                 <Button variant="outline" className="w-full" onClick={handleLock}>
                   Lock
                 </Button>

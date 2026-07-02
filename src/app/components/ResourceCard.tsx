@@ -27,21 +27,21 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
 
   return (
     <Card
-      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 shadow-sm break-inside-avoid")}
+      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 dark:border-slate-700 shadow-sm break-inside-avoid")}
     >
       {tweetId ? (
         // Reserve a pessimistic 400px so the iframe widget can render without
         // pushing siblings down. Twitter's widget self-sizes, so some shift
         // remains for tweets that are very tall or very short.
-        <div className="min-h-[400px] border-b border-slate-100 bg-slate-50 px-3 py-2">
+        <div className="min-h-[400px] border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2">
           <TweetEmbed tweetId={tweetId} />
         </div>
       ) : resource.imageUrl ? (
-        <div className="border-b border-slate-100">
+        <div className="border-b border-slate-100 dark:border-slate-800">
           <img
             src={proxyImage(resource.imageUrl) ?? resource.imageUrl}
             alt=""
-            className="w-full bg-slate-100 object-cover"
+            className="w-full bg-slate-100 dark:bg-slate-800 object-cover"
             style={{ aspectRatio: imageAspectRatio }}
             loading="lazy"
             decoding="async"
@@ -62,7 +62,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+              <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                 {resource.category}
               </Badge>
               {resource.toolSubcategory && (
@@ -70,7 +70,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
                   {resource.toolSubcategory}
                 </Badge>
               )}
-              <Badge variant="outline" className="border-slate-200 text-slate-600">
+              <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                 {resource.source}
               </Badge>
               {resource.tags && resource.tags.length > 0 && (
@@ -81,7 +81,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
                     </Badge>
                   ))}
                   {resource.tags.length > 3 && (
-                    <Badge variant="secondary" className="bg-slate-50 text-slate-500">
+                    <Badge variant="secondary" className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                       +{resource.tags.length - 3}
                     </Badge>
                   )}
@@ -90,8 +90,8 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold text-slate-950 text-balance">{resource.title}</h2>
-              <p className="truncate text-sm text-slate-500">{getHostname(resource.url)}</p>
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-50 text-balance">{resource.title}</h2>
+              <p className="truncate text-sm text-slate-500 dark:text-slate-400">{getHostname(resource.url)}</p>
             </div>
           </div>
 
@@ -117,19 +117,19 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
           )}
         </div>
 
-        <p className="flex-1 text-sm leading-6 text-slate-600 text-pretty">
+        <p className="flex-1 text-sm leading-6 text-slate-600 dark:text-slate-300 text-pretty">
           {resource.notes || resource.description || "No note yet. Open the link to revisit the original resource."}
         </p>
 
         {resource.author && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
             <User className="size-3" />
             <span>{resource.author}</span>
           </div>
         )}
 
         <div className="flex items-center justify-between gap-3 pt-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="size-4" />
               <span>Saved {formatSavedAt(resource.savedAt)}</span>

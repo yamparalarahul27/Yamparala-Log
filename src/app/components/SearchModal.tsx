@@ -88,7 +88,7 @@ export function SearchModal({
         <DialogPrimitive.Content
           className={cn(
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "fixed top-[20%] left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl duration-200",
+            "fixed top-[20%] left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl duration-200",
           )}
         >
           <DialogPrimitive.Title className="sr-only">Search resources</DialogPrimitive.Title>
@@ -97,29 +97,29 @@ export function SearchModal({
             keys or hover to select a result and open it.
           </DialogPrimitive.Description>
 
-          <div className="flex items-center gap-3 border-b border-slate-100 px-4">
-            <Search className="size-4 shrink-0 text-slate-400" />
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 px-4">
+            <Search className="size-4 shrink-0 text-slate-400 dark:text-slate-500" />
             <input
               autoFocus
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search title, notes, source, or author"
-              className="h-14 w-full bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="h-14 w-full bg-transparent text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
               aria-label="Search resources"
             />
             {isSearching && (
-              <span className="shrink-0 text-xs text-slate-400">Searching…</span>
+              <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">Searching…</span>
             )}
           </div>
 
           <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-1">
             {!trimmed ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">
+              <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                 Start typing to search your library.
               </p>
             ) : visible.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">
+              <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                 {isSearching ? "Searching…" : "No matches found."}
               </p>
             ) : (
@@ -134,18 +134,18 @@ export function SearchModal({
                     onClick={() => openResource(resource)}
                     className={cn(
                       "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                      isActive ? "bg-slate-100" : "bg-transparent",
+                      isActive ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent",
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                         {resource.title}
                       </p>
-                      <p className="truncate text-xs text-slate-500">
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                         {getHostname(resource.url)}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
                       {resource.category}
                     </span>
                   </button>
@@ -154,13 +154,13 @@ export function SearchModal({
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
             <span>
-              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
+              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
               apply/open selected{" · "}
-              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
+              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
               navigate{" · "}
-              <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">esc</kbd>{" "}
+              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">esc</kbd>{" "}
               close
             </span>
             {trimmed && visible.length > 0 && (

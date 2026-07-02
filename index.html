@@ -14,6 +14,17 @@
       <meta name="twitter:title" content="Rahul's Log" />
       <meta name="twitter:description" content="Save every useful link in one place." />
       <meta name="twitter:image" content="/images/og-image.png" />
+      <script>
+        (function () {
+          try {
+            var stored = localStorage.getItem("theme");
+            var dark = stored
+              ? stored === "dark"
+              : window.matchMedia("(prefers-color-scheme: dark)").matches;
+            if (dark) document.documentElement.classList.add("dark");
+          } catch (e) {}
+        })();
+      </script>
     </head>
 
     <body>

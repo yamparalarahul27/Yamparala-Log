@@ -139,6 +139,10 @@
     scrollbar-color: #cbd5e1 transparent;
   }
 
+  html.dark {
+    scrollbar-color: #475569 transparent;
+  }
+
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
