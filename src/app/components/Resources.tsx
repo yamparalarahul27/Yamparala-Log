@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/services/api-client";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { AdminGate } from "@/app/components/AdminGate";
+import { InboxView } from "@/app/components/InboxView";
 import { ResourceCard } from "@/app/components/ResourceCard";
 import { SearchModal } from "@/app/components/SearchModal";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
@@ -46,7 +47,7 @@ import {
 
 const SHOW_GALLERY_VIEW_TRIGGER = false;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-type TabValue = "resources" | "this-week" | "tasks";
+type TabValue = "resources" | "this-week" | "tasks" | "inbox";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -88,6 +89,18 @@ export function Resources() {
     queryKey: ["resources", "list-all"],
     queryFn: () => apiClient.resources.getAllLight(),
     enabled: viewMode === "list",
+    staleTime: 60_000,
+  });
+  // Inbox scans the whole library for rows missing tags/notes — loaded only
+  // when the tab is visited, same philosophy as the list view above.
+  const {
+    data: inboxRows = [],
+    isLoading: inboxLoading,
+    error: inboxError,
+  } = useQuery({
+    queryKey: ["resources", "inbox"],
+    queryFn: () => apiClient.resources.getInbox(),
+    enabled: activeTab === "inbox",
     staleTime: 60_000,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -256,6 +269,18 @@ export function Resources() {
               >
                 Tasks
               </Button>
+              <Button
+                variant={activeTab === "inbox" ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => setActiveTab("inbox")}
+              >
+                Inbox
+                {inboxRows.length > 0 && (
+                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {inboxRows.length}
+                  </span>
+                )}
+              </Button>
             </div>
             <div className="sm:hidden">
               <Select value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
@@ -266,6 +291,7 @@ export function Resources() {
                   <SelectItem value="resources">Resources</SelectItem>
                   <SelectItem value="this-week">This Week</SelectItem>
                   <SelectItem value="tasks">Tasks</SelectItem>
+                  <SelectItem value="inbox">Inbox</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -285,7 +311,7 @@ export function Resources() {
                   /
                 </kbd>
               </Button>
-              {activeTab !== "tasks" && (
+              {activeTab !== "tasks" && activeTab !== "inbox" && (
                 <FilterPopover
                   categories={categories}
                   sources={sources}
@@ -317,7 +343,7 @@ export function Resources() {
                 onUnlock={() => setIsAdmin(true)}
                 onLock={() => setIsAdmin(false)}
               />
-              {activeTab !== "tasks" && (
+              {activeTab !== "tasks" && activeTab !== "inbox" && (
                 <div className="flex gap-1">
                   <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}
@@ -350,7 +376,14 @@ export function Resources() {
             </div>
           </div>
 
-          {activeTab === "tasks" ? (
+          {activeTab === "inbox" ? (
+            <InboxView
+              rows={inboxRows}
+              loading={inboxLoading}
+              error={inboxError instanceof Error ? inboxError : null}
+              isAdmin={isAdmin}
+            />
+          ) : activeTab === "tasks" ? (
             <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-4 shadow-sm sm:p-6">
               {(() => {
                 const pendingTasks = resources.filter((r) => r.task.trim() !== "" && !r.taskDone);

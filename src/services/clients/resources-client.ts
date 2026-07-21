@@ -179,7 +179,72 @@ interface ResourceLiteRow {
 // without breaking list view.
 const LIST_PAGE_SIZE = 1000;
 
+export interface InboxRow {
+  id: string;
+  title: string;
+  url: string;
+  category: string;
+  tags: string[];
+  notes: string;
+  description: string | null;
+  savedAt: string;
+}
+
+export interface EnrichmentPatch {
+  category: string;
+  tags: string[];
+  notes?: string;
+}
+
 export class ResourcesClient {
+  // Rows that still need enrichment: no tags or no context note. Same
+  // cursor loop as getAllLight so the scan survives the 1000-row cap.
+  async getInbox(): Promise<InboxRow[]> {
+    const all: InboxRow[] = [];
+    let cursor: string | undefined;
+    while (true) {
+      const params = new URLSearchParams();
+      params.set("select", "id,title,url,category,tags,notes,description,saved_at");
+      params.set("order", "saved_at.desc");
+      params.set("limit", String(LIST_PAGE_SIZE));
+      if (cursor) {
+        params.set("saved_at", `lt.${cursor}`);
+      }
+      const rows = await supabaseRequest<Array<Partial<ResourceRow>>>(
+        `/${SUPABASE_TABLES.RESOURCES}?${params.toString()}&or=(notes.is.null,notes.eq."",tags.is.null,tags.eq.{})`,
+      );
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        all.push({
+          id: String(row.id),
+          title: String(row.title ?? "Untitled resource"),
+          url: String(row.url ?? ""),
+          category: String(row.category ?? "Others"),
+          tags: (row.tags as string[]) ?? [],
+          notes: String(row.notes ?? ""),
+          description: (row.description as string) ?? null,
+          savedAt: String(row.saved_at ?? new Date().toISOString()),
+        });
+      }
+      if (rows.length < LIST_PAGE_SIZE) break;
+      cursor = rows[rows.length - 1].saved_at ?? undefined;
+      if (!cursor) break;
+    }
+    return all;
+  }
+
+  // Patches exactly the enrichment columns — deliberately not toRow(), which
+  // builds a full row and would null out url-derived fields on partial input.
+  async applyEnrichment(id: string, patch: EnrichmentPatch): Promise<void> {
+    await supabaseRequest<void>(
+      `/${SUPABASE_TABLES.RESOURCES}?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      },
+    );
+  }
+
   async getAllLight(): Promise<ResourceLite[]> {
     const all: ResourceLite[] = [];
     let cursor: string | undefined;

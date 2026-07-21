@@ -74,6 +74,18 @@ const VALID_CATEGORIES = [
   "Others",
 ];
 
+// Curated tag vocabulary — publisher keywords are dropped unless they match,
+// so the tags column stays a personal taxonomy instead of SEO noise.
+const ALLOWED_TAGS = [
+  "ai",
+  "crypto",
+  "open-source",
+  "ui-components",
+  "animation",
+  "ui-interaction",
+  "design-inspiration",
+];
+
 function parseMessage(text: string): {
   urls: string[];
   category: string;
@@ -277,7 +289,7 @@ serve(async (req) => {
         description: meta.description,
         site_name: meta.siteName,
         content_type: meta.contentType,
-        tags: meta.tags ?? [],
+        tags: (meta.tags ?? []).filter((t) => ALLOWED_TAGS.includes(t)),
         author: meta.author,
         published_at: meta.publishedAt,
         language: meta.language,
