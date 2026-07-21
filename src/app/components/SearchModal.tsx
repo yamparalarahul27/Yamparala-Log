@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Search } from "lucide-react";
 import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { cn } from "@/app/components/ui/utils";
+import { getRecentOpens, recordOpen, type RecentOpen } from "@/utils/recent-opens";
 
 interface SearchModalProps {
   open: boolean;
@@ -32,7 +33,17 @@ export function SearchModal({
   const listRef = useRef<HTMLDivElement>(null);
 
   const trimmed = query.trim();
-  const visible = trimmed && !isSearching ? resources.slice(0, MAX_RESULTS) : [];
+  // Empty query shows recently opened links (localStorage snapshots) plus the
+  // most recently saved resources; a query shows server search results.
+  const recentOpens = !trimmed && open ? getRecentOpens() : [];
+  const recentSaved = !trimmed
+    ? resources.filter((r) => !recentOpens.some((o) => o.id === r.id)).slice(0, 5)
+    : [];
+  const visible: RecentOpen[] = trimmed
+    ? isSearching
+      ? []
+      : resources.slice(0, MAX_RESULTS)
+    : [...recentOpens, ...recentSaved];
 
   useEffect(() => {
     setHighlightedIndex(null);
@@ -46,7 +57,13 @@ export function SearchModal({
     node?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex]);
 
-  const openResource = (resource: Resource) => {
+  const openResource = (resource: RecentOpen) => {
+    recordOpen({
+      id: resource.id,
+      title: resource.title,
+      url: resource.url,
+      category: resource.category,
+    });
     window.open(resource.url, "_blank", "noreferrer");
     onOpenChange(false);
   };
@@ -93,8 +110,8 @@ export function SearchModal({
         >
           <DialogPrimitive.Title className="sr-only">Search resources</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Search title, notes, source, or author. Press Enter to apply the search, or use arrow
-            keys or hover to select a result and open it.
+            Search title, url, tags, notes, source, or author. Press Enter to apply the search, or
+            use arrow keys or hover to select a result and open it.
           </DialogPrimitive.Description>
 
           <div className="flex items-center gap-3 border-b border-stone-100 dark:border-stone-800 px-4">
@@ -104,7 +121,7 @@ export function SearchModal({
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search title, notes, source, or author"
+              placeholder="Search title, url, tags, notes, source, or author"
               className="h-14 w-full bg-transparent text-base text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none"
               aria-label="Search resources"
             />
@@ -114,20 +131,30 @@ export function SearchModal({
           </div>
 
           <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-1">
-            {!trimmed ? (
+            {visible.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-stone-400 dark:text-stone-500">
-                Start typing to search your library.
-              </p>
-            ) : visible.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-stone-400 dark:text-stone-500">
-                {isSearching ? "Searching…" : "No matches found."}
+                {!trimmed
+                  ? "Start typing to search your library."
+                  : isSearching
+                    ? "Searching…"
+                    : "No matches found."}
               </p>
             ) : (
               visible.map((resource, index) => {
                 const isActive = highlightedIndex === index;
                 return (
+                  <Fragment key={resource.id}>
+                  {!trimmed && index === 0 && (
+                    <p className="px-4 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                      {recentOpens.length > 0 ? "Recently opened" : "Recently saved"}
+                    </p>
+                  )}
+                  {!trimmed && recentOpens.length > 0 && index === recentOpens.length && (
+                    <p className="px-4 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                      Recently saved
+                    </p>
+                  )}
                   <button
-                    key={resource.id}
                     type="button"
                     data-index={index}
                     onMouseEnter={() => setHighlightedIndex(index)}
@@ -149,6 +176,7 @@ export function SearchModal({
                       {resource.category}
                     </span>
                   </button>
+                  </Fragment>
                 );
               })
             )}

@@ -142,7 +142,7 @@ export interface GetPageOptions {
   search?: string;
 }
 
-const SEARCH_FIELDS = ["title", "notes", "description", "site_name", "author", "source"] as const;
+const SEARCH_FIELDS = ["title", "url", "notes", "description", "site_name", "author", "source"] as const;
 
 function buildSearchFilter(query: string): string {
   // Quote the value so commas / parens / spaces in user input don't break PostgREST's or=(...) parsing.
@@ -150,7 +150,10 @@ function buildSearchFilter(query: string): string {
   const escaped = query.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const value = encodeURIComponent(`"*${escaped}*"`);
   const filters = SEARCH_FIELDS.map((f) => `${f}.ilike.${value}`).join(",");
-  return `or=(${filters})`;
+  // tags is text[], so no ilike — cs (contains) matches when the query equals a
+  // whole tag, which fits the single-word curated vocabulary.
+  const tagFilter = `tags.cs.${encodeURIComponent(`{"${escaped}"}`)}`;
+  return `or=(${filters},${tagFilter})`;
 }
 
 export interface ResourceLite {

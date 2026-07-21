@@ -5,6 +5,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { cn } from "@/app/components/ui/utils";
+import { recordOpen } from "@/utils/recent-opens";
 import { ArrowUpRight, CalendarDays, Clock, Pencil, Trash2, User } from "lucide-react";
 
 type ResourceCardProps = {
@@ -143,7 +144,19 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
           </div>
 
           <Button asChild variant="outline" className="gap-2">
-            <a href={resource.url} target="_blank" rel="noreferrer">
+            <a
+              href={resource.url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() =>
+                recordOpen({
+                  id: resource.id,
+                  title: resource.title,
+                  url: resource.url,
+                  category: resource.category,
+                })
+              }
+            >
               Open
               <ArrowUpRight className="size-4" />
             </a>
