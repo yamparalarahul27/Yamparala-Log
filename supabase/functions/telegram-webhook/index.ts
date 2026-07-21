@@ -83,7 +83,7 @@ function parseMessage(text: string): {
 
   // Extract #Category tag
   const categoryMatch = text.match(/#(\w+)/);
-  let category = "Other";
+  let category = "Others";
   if (categoryMatch) {
     const matched = categoryMatch[1];
     const found = VALID_CATEGORIES.find(
@@ -221,7 +221,7 @@ serve(async (req) => {
       if (recent) {
         const { error } = await supabase
           .from("resources")
-          .update({ notes: text.trim() })
+          .update({ task: text.trim() })
           .eq("id", recent.id);
 
         if (error) {

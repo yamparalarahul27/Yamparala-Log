@@ -353,11 +353,11 @@ export function Resources() {
           {activeTab === "tasks" ? (
             <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-4 shadow-sm sm:p-6">
               {(() => {
-                const pendingTasks = resources.filter((r) => r.notes.trim() !== "" && !r.taskDone);
+                const pendingTasks = resources.filter((r) => r.task.trim() !== "" && !r.taskDone);
                 if (pendingTasks.length === 0) {
                   return (
                     <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                      No pending tasks. Add a comment to a resource to create one.
+                      No pending tasks. Send a follow-up message on Telegram after saving a link to create one.
                     </p>
                   );
                 }
@@ -370,10 +370,10 @@ export function Resources() {
                           disabled={!isAdmin}
                           className="mt-1 size-5 rounded border-slate-300 dark:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50 [&:not(:disabled)]:cursor-pointer"
                           onChange={() => void handleCompleteTask(resource)}
-                          aria-label={`Complete task: ${resource.notes}`}
+                          aria-label={`Complete task: ${resource.task}`}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-900 dark:text-slate-100 text-pretty">{resource.notes}</p>
+                          <p className="text-sm text-slate-900 dark:text-slate-100 text-pretty">{resource.task}</p>
                           <p className="truncate text-xs text-slate-500 dark:text-slate-400">{getHostname(resource.url)}</p>
                         </div>
                         <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">

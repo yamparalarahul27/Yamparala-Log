@@ -20,6 +20,7 @@ interface ResourceRow {
   tool_subcategory: "Dev tool" | "UX tool" | null;
   source: string | null;
   notes: string | null;
+  task: string | null;
   image_url: string | null;
   image_width: number | null;
   image_height: number | null;
@@ -56,6 +57,9 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
       row.tool_subcategory === "Dev tool" || row.tool_subcategory === "UX tool" ? row.tool_subcategory : null,
     source: String(row.source ?? inferSource(String(row.url ?? ""))),
     notes: String(row.notes ?? ""),
+    // `task` is written only by the Telegram webhook; toRow deliberately omits
+    // it so web saves/edits can never clobber a pending task.
+    task: String(row.task ?? ""),
     imageUrl: row.image_url ?? null,
     imageWidth: typeof row.image_width === "number" ? row.image_width : null,
     imageHeight: typeof row.image_height === "number" ? row.image_height : null,
