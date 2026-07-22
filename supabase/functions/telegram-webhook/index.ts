@@ -74,6 +74,18 @@ const VALID_CATEGORIES = [
   "Others",
 ];
 
+// Curated tag vocabulary — publisher keywords are dropped unless they match,
+// so the tags column stays a personal taxonomy instead of SEO noise.
+const ALLOWED_TAGS = [
+  "ai",
+  "crypto",
+  "open-source",
+  "ui-components",
+  "animation",
+  "ui-interaction",
+  "design-inspiration",
+];
+
 function parseMessage(text: string): {
   urls: string[];
   category: string;
@@ -83,7 +95,7 @@ function parseMessage(text: string): {
 
   // Extract #Category tag
   const categoryMatch = text.match(/#(\w+)/);
-  let category = "Other";
+  let category = "Others";
   if (categoryMatch) {
     const matched = categoryMatch[1];
     const found = VALID_CATEGORIES.find(
@@ -221,7 +233,7 @@ serve(async (req) => {
       if (recent) {
         const { error } = await supabase
           .from("resources")
-          .update({ notes: text.trim() })
+          .update({ task: text.trim() })
           .eq("id", recent.id);
 
         if (error) {
@@ -277,7 +289,7 @@ serve(async (req) => {
         description: meta.description,
         site_name: meta.siteName,
         content_type: meta.contentType,
-        tags: meta.tags ?? [],
+        tags: (meta.tags ?? []).filter((t) => ALLOWED_TAGS.includes(t)),
         author: meta.author,
         published_at: meta.publishedAt,
         language: meta.language,

@@ -60,7 +60,7 @@ export function FilterPopover({
       </PopoverTrigger>
       <PopoverContent className="w-72 space-y-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Category</label>
+          <label className="text-xs font-medium text-stone-600 dark:text-stone-300">Category</label>
           <Select value={categoryFilter} onValueChange={onCategoryChange}>
             <SelectTrigger aria-label="Filter by category">
               <SelectValue placeholder="All categories" />
@@ -77,7 +77,7 @@ export function FilterPopover({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Source</label>
+          <label className="text-xs font-medium text-stone-600 dark:text-stone-300">Source</label>
           <Select value={sourceFilter} onValueChange={onSourceChange}>
             <SelectTrigger aria-label="Filter by source">
               <SelectValue placeholder="All sources" />
@@ -94,7 +94,7 @@ export function FilterPopover({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Sort by</label>
+          <label className="text-xs font-medium text-stone-600 dark:text-stone-300">Sort by</label>
           <Select
             value={sortBy}
             onValueChange={(value) => onSortChange(value as SortValue)}
@@ -111,7 +111,7 @@ export function FilterPopover({
         </div>
 
         {activeCount > 0 && (
-          <div className="flex justify-end border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="flex justify-end border-t border-stone-100 dark:border-stone-800 pt-3">
             <Button variant="ghost" size="sm" onClick={onClear}>
               Clear filters
             </Button>

@@ -240,20 +240,20 @@ function PanelMeta({ item }: { item: GalleryItem }) {
     <div className="flex flex-col gap-2.5">
       {item.source && (
         <div className="flex items-center gap-2.5">
-          <MapPin size={15} className="text-slate-400 dark:text-slate-500" />
-          <span className="text-sm text-slate-600 dark:text-slate-300">{item.source}</span>
+          <MapPin size={15} className="text-stone-400 dark:text-stone-500" />
+          <span className="text-sm text-stone-600 dark:text-stone-300">{item.source}</span>
         </div>
       )}
       {item.date && (
         <div className="flex items-center gap-2.5">
-          <Calendar size={15} className="text-slate-400 dark:text-slate-500" />
-          <span className="text-sm text-slate-600 dark:text-slate-300">{item.date}</span>
+          <Calendar size={15} className="text-stone-400 dark:text-stone-500" />
+          <span className="text-sm text-stone-600 dark:text-stone-300">{item.date}</span>
         </div>
       )}
       {item.tags && item.tags.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1.5">
           {item.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">{tag}</span>
+            <span key={tag} className="rounded-full bg-stone-100 dark:bg-stone-800 px-2.5 py-0.5 text-[11px] font-medium text-stone-600 dark:text-stone-300">{tag}</span>
           ))}
         </div>
       )}
@@ -307,29 +307,29 @@ function SidePanel({
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+          className={`fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col overflow-hidden rounded-t-2xl border-t border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 text-stone-900 dark:text-stone-100 backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? "translate-y-0" : "translate-y-full"}`}
           style={{ transform: isOpen ? `translateY(${dragOffset}px)` : "translateY(100%)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           <div className="flex shrink-0 justify-center pb-2 pt-3">
-            <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <div className="h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-600" />
           </div>
           {item && (
             <div className="flex-1 overflow-y-auto">
               <div className="relative aspect-[16/9] w-full overflow-hidden">
                 <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/95 dark:from-slate-900/95 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/95 dark:from-stone-900/95 to-transparent" />
               </div>
               <div className="flex flex-col gap-4 px-5 pb-5 pt-3">
                 <div>
                   <h2 className="text-lg font-bold leading-tight">{item.title}</h2>
-                  {item.description && <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>}
+                  {item.description && <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400">{item.description}</p>}
                 </div>
                 <PanelMeta item={item} />
                 <a
                   href={item.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
                 >
                   <ExternalLink size={15} /> Open Link
                 </a>
@@ -343,27 +343,27 @@ function SidePanel({
 
   return (
     <div className={`pointer-events-none fixed inset-y-0 right-0 z-50 flex w-[380px] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
-      <div className="pointer-events-auto relative flex h-full w-full flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 backdrop-blur-2xl">
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-200">
+      <div className="pointer-events-auto relative flex h-full w-full flex-col overflow-y-auto border-l border-stone-200 dark:border-stone-700 bg-white/90 dark:bg-stone-900/90 text-stone-900 dark:text-stone-100 backdrop-blur-2xl">
+        <button onClick={onClose} className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 transition-colors hover:bg-stone-200">
           <X size={18} />
         </button>
         {item && (
           <>
             <div className="relative aspect-[4/3] w-full overflow-hidden">
               <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/90 dark:from-stone-900/90 to-transparent" />
             </div>
             <div className="flex flex-1 flex-col gap-5 p-6">
               <div>
                 <h2 className="text-xl font-bold leading-tight">{item.title}</h2>
-                {item.description && <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>}
+                {item.description && <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400">{item.description}</p>}
               </div>
               <PanelMeta item={item} />
               <a
                 href={item.url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
               >
                 <ExternalLink size={15} /> Open Link
               </a>
@@ -377,7 +377,7 @@ function SidePanel({
 
 function HUD({ itemCount, isMobile }: { itemCount: number; isMobile: boolean }) {
   return (
-    <div className="fixed left-3 top-[72px] z-40 flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 px-2 py-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 backdrop-blur-md sm:left-5 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs">
+    <div className="fixed left-3 top-[72px] z-40 flex items-center gap-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white/80 dark:bg-stone-900/80 px-2 py-1 text-[10px] font-medium text-stone-500 dark:text-stone-400 backdrop-blur-md sm:left-5 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs">
       <Camera size={isMobile ? 11 : 13} />
       <span>{itemCount} items</span>
       <span className="mx-0.5 opacity-30 sm:mx-1">|</span>
@@ -407,7 +407,7 @@ export default function CanvasGallery({
 
   if (items.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+      <div className="flex h-full items-center justify-center text-sm text-stone-500 dark:text-stone-400">
         No resources with images to display in gallery view.
       </div>
     );

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/services/api-client";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
 import { AdminGate } from "@/app/components/AdminGate";
+import { InboxView } from "@/app/components/InboxView";
 import { ResourceCard } from "@/app/components/ResourceCard";
 import { SearchModal } from "@/app/components/SearchModal";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
@@ -46,7 +47,7 @@ import {
 
 const SHOW_GALLERY_VIEW_TRIGGER = false;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-type TabValue = "resources" | "this-week" | "tasks";
+type TabValue = "resources" | "this-week" | "tasks" | "inbox";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -88,6 +89,18 @@ export function Resources() {
     queryKey: ["resources", "list-all"],
     queryFn: () => apiClient.resources.getAllLight(),
     enabled: viewMode === "list",
+    staleTime: 60_000,
+  });
+  // Inbox scans the whole library for rows missing tags/notes — loaded only
+  // when the tab is visited, same philosophy as the list view above.
+  const {
+    data: inboxRows = [],
+    isLoading: inboxLoading,
+    error: inboxError,
+  } = useQuery({
+    queryKey: ["resources", "inbox"],
+    queryFn: () => apiClient.resources.getInbox(),
+    enabled: activeTab === "inbox",
     staleTime: 60_000,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -256,6 +269,18 @@ export function Resources() {
               >
                 Tasks
               </Button>
+              <Button
+                variant={activeTab === "inbox" ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => setActiveTab("inbox")}
+              >
+                Inbox
+                {inboxRows.length > 0 && (
+                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {inboxRows.length}
+                  </span>
+                )}
+              </Button>
             </div>
             <div className="sm:hidden">
               <Select value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
@@ -266,6 +291,7 @@ export function Resources() {
                   <SelectItem value="resources">Resources</SelectItem>
                   <SelectItem value="this-week">This Week</SelectItem>
                   <SelectItem value="tasks">Tasks</SelectItem>
+                  <SelectItem value="inbox">Inbox</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -281,11 +307,11 @@ export function Resources() {
                 <span className="hidden max-w-[12rem] truncate sm:inline">
                   {activeSearch || "Search"}
                 </span>
-                <kbd className="hidden rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 sm:inline">
+                <kbd className="hidden rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-[10px] text-stone-500 dark:text-stone-400 sm:inline">
                   /
                 </kbd>
               </Button>
-              {activeTab !== "tasks" && (
+              {activeTab !== "tasks" && activeTab !== "inbox" && (
                 <FilterPopover
                   categories={categories}
                   sources={sources}
@@ -317,7 +343,7 @@ export function Resources() {
                 onUnlock={() => setIsAdmin(true)}
                 onLock={() => setIsAdmin(false)}
               />
-              {activeTab !== "tasks" && (
+              {activeTab !== "tasks" && activeTab !== "inbox" && (
                 <div className="flex gap-1">
                   <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}
@@ -350,31 +376,38 @@ export function Resources() {
             </div>
           </div>
 
-          {activeTab === "tasks" ? (
-            <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-4 shadow-sm sm:p-6">
+          {activeTab === "inbox" ? (
+            <InboxView
+              rows={inboxRows}
+              loading={inboxLoading}
+              error={inboxError instanceof Error ? inboxError : null}
+              isAdmin={isAdmin}
+            />
+          ) : activeTab === "tasks" ? (
+            <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-4 shadow-sm sm:p-6">
               {(() => {
-                const pendingTasks = resources.filter((r) => r.notes.trim() !== "" && !r.taskDone);
+                const pendingTasks = resources.filter((r) => r.task.trim() !== "" && !r.taskDone);
                 if (pendingTasks.length === 0) {
                   return (
-                    <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                      No pending tasks. Add a comment to a resource to create one.
+                    <p className="py-8 text-center text-sm text-stone-500 dark:text-stone-400">
+                      No pending tasks. Send a follow-up message on Telegram after saving a link to create one.
                     </p>
                   );
                 }
                 return (
-                  <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800">
                     {pendingTasks.map((resource) => (
                       <div key={resource.id} className="flex items-start gap-3 py-3">
                         <input
                           type="checkbox"
                           disabled={!isAdmin}
-                          className="mt-1 size-5 rounded border-slate-300 dark:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50 [&:not(:disabled)]:cursor-pointer"
+                          className="mt-1 size-5 rounded border-stone-300 dark:border-stone-600 disabled:cursor-not-allowed disabled:opacity-50 [&:not(:disabled)]:cursor-pointer"
                           onChange={() => void handleCompleteTask(resource)}
-                          aria-label={`Complete task: ${resource.notes}`}
+                          aria-label={`Complete task: ${resource.task}`}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-900 dark:text-slate-100 text-pretty">{resource.notes}</p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{getHostname(resource.url)}</p>
+                          <p className="text-sm text-stone-900 dark:text-stone-100 text-pretty">{resource.task}</p>
+                          <p className="truncate text-xs text-stone-500 dark:text-stone-400">{getHostname(resource.url)}</p>
                         </div>
                         <Button asChild variant="outline" size="sm" className="gap-1 shrink-0">
                           <a href={resource.url} target="_blank" rel="noreferrer">
@@ -389,8 +422,8 @@ export function Resources() {
               })()}
             </Card>
           ) : activeTab === "resources" && viewMode === "gallery" ? (
-          <div className="h-[70vh] w-full overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400 dark:text-slate-500">Loading gallery...</div>}>
+          <div className="h-[70vh] w-full overflow-hidden rounded-3xl border border-stone-200 dark:border-stone-700 shadow-sm">
+            <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-stone-400 dark:text-stone-500">Loading gallery...</div>}>
               <CanvasGallery
                 items={filteredResources.map(resourceToGalleryItem).filter((g): g is NonNullable<typeof g> => g !== null)}
               />
@@ -416,8 +449,8 @@ export function Resources() {
             }
             if (listLoading) {
               return (
-                <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-4 shadow-sm sm:p-6">
-                  <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-4 shadow-sm sm:p-6">
+                  <div className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800">
                     {Array.from({ length: 12 }).map((_, i) => (
                       <div key={i} className="flex flex-col gap-1 py-2.5">
                         <Skeleton className="h-4 w-3/5" />
@@ -430,8 +463,8 @@ export function Resources() {
             }
             if (listFiltered.length === 0) {
               return (
-                <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-10 text-center shadow-sm">
-                  <p className="text-slate-600 dark:text-slate-300 text-pretty">
+                <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-10 text-center shadow-sm">
+                  <p className="text-stone-600 dark:text-stone-300 text-pretty">
                     {activeTab === "this-week"
                       ? "Nothing new this week — yet."
                       : "No resources match these filters."}
@@ -440,27 +473,27 @@ export function Resources() {
               );
             }
             return (
-              <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-2 shadow-sm sm:p-3">
-                <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+              <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-2 shadow-sm sm:p-3">
+                <ul className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800">
                   {listFiltered.map((r) => (
                     <li key={r.id}>
                       <a
                         href={r.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-baseline gap-3 rounded-md px-3 py-2 transition-colors hover:bg-slate-50"
+                        className="flex items-baseline gap-3 rounded-md px-3 py-2 transition-colors hover:bg-stone-50"
                       >
-                        <span className="min-w-0 flex-1 truncate text-sm text-slate-900 dark:text-slate-100">
+                        <span className="min-w-0 flex-1 truncate text-sm text-stone-900 dark:text-stone-100">
                           {r.title}
                         </span>
-                        <span className="shrink-0 truncate text-xs text-slate-500 dark:text-slate-400">
+                        <span className="shrink-0 truncate text-xs text-stone-500 dark:text-stone-400">
                           {getHostname(r.url)}
                         </span>
                       </a>
                     </li>
                   ))}
                 </ul>
-                <p className="px-3 py-2 text-center text-xs text-slate-400 dark:text-slate-500">
+                <p className="px-3 py-2 text-center text-xs text-stone-400 dark:text-stone-500">
                   {listFiltered.length} {listFiltered.length === 1 ? "resource" : "resources"}
                 </p>
               </Card>
@@ -475,7 +508,7 @@ export function Resources() {
                   <h2 className="text-lg font-semibold text-red-800 text-balance">The library could not be loaded.</h2>
                   <p className="text-sm text-red-700 text-pretty">{loadError}</p>
                 </div>
-                <Button variant="outline" className="border-red-200 bg-white dark:bg-slate-900" onClick={reload}>
+                <Button variant="outline" className="border-red-200 bg-white dark:bg-stone-900" onClick={reload}>
                   Try again
                 </Button>
               </div>
@@ -483,7 +516,7 @@ export function Resources() {
           ) : loading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="rounded-3xl border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+                <Card key={index} className="rounded-3xl border-stone-200 dark:border-stone-700 p-5 shadow-sm">
                   <div className="space-y-4">
                     <div className="flex gap-2">
                       <Skeleton className="h-6 w-20 rounded-full" />
@@ -503,13 +536,13 @@ export function Resources() {
               ))}
             </div>
           ) : resources.length === 0 && !query.trim() ? (
-            <Card className="rounded-3xl border-dashed border-slate-300 dark:border-slate-600 p-10 text-center shadow-sm">
+            <Card className="rounded-3xl border-dashed border-stone-300 dark:border-stone-600 p-10 text-center shadow-sm">
               <div className="mx-auto max-w-lg space-y-3">
-                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-blue-700">
+                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-blue-700">
                   <FolderOpen className="size-5" />
                 </div>
-                <h2 className="text-2xl font-semibold text-slate-950 dark:text-slate-50 text-balance">Start your library with the next link you save.</h2>
-                <p className="text-slate-600 dark:text-slate-300 text-pretty">
+                <h2 className="text-2xl font-semibold text-stone-950 dark:text-stone-50 text-balance">Start your library with the next link you save.</h2>
+                <p className="text-stone-600 dark:text-stone-300 text-pretty">
                   Add a resource once, tag where it came from, and leave a quick note for the future version of you.
                 </p>
                 <Button className="gap-2" onClick={handleOpenCreate}>
@@ -519,14 +552,14 @@ export function Resources() {
               </div>
             </Card>
           ) : filteredResources.length === 0 ? (
-            <Card className="rounded-3xl border-slate-200 dark:border-slate-700 p-10 text-center shadow-sm">
+            <Card className="rounded-3xl border-stone-200 dark:border-stone-700 p-10 text-center shadow-sm">
               <div className="mx-auto max-w-lg space-y-3">
-                <h2 className="text-2xl font-semibold text-slate-950 dark:text-slate-50 text-balance">
+                <h2 className="text-2xl font-semibold text-stone-950 dark:text-stone-50 text-balance">
                   {activeTab === "this-week"
                     ? "Nothing new this week — yet."
                     : "No resources match these filters."}
                 </h2>
-                <p className="text-slate-600 dark:text-slate-300 text-pretty">
+                <p className="text-stone-600 dark:text-stone-300 text-pretty">
                   {activeTab === "this-week"
                     ? "Resources you save in the next seven days will show up here."
                     : "Try a broader search or clear the category and source filters to bring everything back."}
@@ -562,7 +595,7 @@ export function Resources() {
                   />
                 ))}
               </div>
-              <div ref={sentinelRef} className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+              <div ref={sentinelRef} className="py-6 text-center text-sm text-stone-500 dark:text-stone-400">
                 {isFetchingNextPage
                   ? "Loading more…"
                   : hasNextPage

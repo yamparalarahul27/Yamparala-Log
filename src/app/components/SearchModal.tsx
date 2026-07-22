@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Search } from "lucide-react";
 import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { cn } from "@/app/components/ui/utils";
+import { getRecentOpens, recordOpen, type RecentOpen } from "@/utils/recent-opens";
 
 interface SearchModalProps {
   open: boolean;
@@ -32,7 +33,17 @@ export function SearchModal({
   const listRef = useRef<HTMLDivElement>(null);
 
   const trimmed = query.trim();
-  const visible = trimmed && !isSearching ? resources.slice(0, MAX_RESULTS) : [];
+  // Empty query shows recently opened links (localStorage snapshots) plus the
+  // most recently saved resources; a query shows server search results.
+  const recentOpens = !trimmed && open ? getRecentOpens() : [];
+  const recentSaved = !trimmed
+    ? resources.filter((r) => !recentOpens.some((o) => o.id === r.id)).slice(0, 5)
+    : [];
+  const visible: RecentOpen[] = trimmed
+    ? isSearching
+      ? []
+      : resources.slice(0, MAX_RESULTS)
+    : [...recentOpens, ...recentSaved];
 
   useEffect(() => {
     setHighlightedIndex(null);
@@ -46,7 +57,13 @@ export function SearchModal({
     node?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex]);
 
-  const openResource = (resource: Resource) => {
+  const openResource = (resource: RecentOpen) => {
+    recordOpen({
+      id: resource.id,
+      title: resource.title,
+      url: resource.url,
+      category: resource.category,
+    });
     window.open(resource.url, "_blank", "noreferrer");
     onOpenChange(false);
   };
@@ -88,79 +105,90 @@ export function SearchModal({
         <DialogPrimitive.Content
           className={cn(
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "fixed top-[20%] left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl duration-200",
+            "fixed top-[20%] left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 shadow-2xl duration-200",
           )}
         >
           <DialogPrimitive.Title className="sr-only">Search resources</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Search title, notes, source, or author. Press Enter to apply the search, or use arrow
-            keys or hover to select a result and open it.
+            Search title, url, tags, notes, source, or author. Press Enter to apply the search, or
+            use arrow keys or hover to select a result and open it.
           </DialogPrimitive.Description>
 
-          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 px-4">
-            <Search className="size-4 shrink-0 text-slate-400 dark:text-slate-500" />
+          <div className="flex items-center gap-3 border-b border-stone-100 dark:border-stone-800 px-4">
+            <Search className="size-4 shrink-0 text-stone-400 dark:text-stone-500" />
             <input
               autoFocus
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search title, notes, source, or author"
-              className="h-14 w-full bg-transparent text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              placeholder="Search title, url, tags, notes, source, or author"
+              className="h-14 w-full bg-transparent text-base text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none"
               aria-label="Search resources"
             />
             {isSearching && (
-              <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">Searching…</span>
+              <span className="shrink-0 text-xs text-stone-400 dark:text-stone-500">Searching…</span>
             )}
           </div>
 
           <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-1">
-            {!trimmed ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-                Start typing to search your library.
-              </p>
-            ) : visible.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-                {isSearching ? "Searching…" : "No matches found."}
+            {visible.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-stone-400 dark:text-stone-500">
+                {!trimmed
+                  ? "Start typing to search your library."
+                  : isSearching
+                    ? "Searching…"
+                    : "No matches found."}
               </p>
             ) : (
               visible.map((resource, index) => {
                 const isActive = highlightedIndex === index;
                 return (
+                  <Fragment key={resource.id}>
+                  {!trimmed && index === 0 && (
+                    <p className="px-4 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                      {recentOpens.length > 0 ? "Recently opened" : "Recently saved"}
+                    </p>
+                  )}
+                  {!trimmed && recentOpens.length > 0 && index === recentOpens.length && (
+                    <p className="px-4 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                      Recently saved
+                    </p>
+                  )}
                   <button
-                    key={resource.id}
                     type="button"
                     data-index={index}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => openResource(resource)}
                     className={cn(
                       "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                      isActive ? "bg-slate-100 dark:bg-slate-800" : "bg-transparent",
+                      isActive ? "bg-stone-100 dark:bg-stone-800" : "bg-transparent",
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
                         {resource.title}
                       </p>
-                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      <p className="truncate text-xs text-stone-500 dark:text-stone-400">
                         {getHostname(resource.url)}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
+                    <span className="shrink-0 rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-xs text-stone-600 dark:text-stone-300">
                       {resource.category}
                     </span>
                   </button>
+                  </Fragment>
                 );
               })
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between border-t border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-800 px-4 py-2 text-xs text-stone-500 dark:text-stone-400">
             <span>
-              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
+              <kbd className="rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-1.5 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
               apply/open selected{" · "}
-              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
+              <kbd className="rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
               navigate{" · "}
-              <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 font-mono text-[10px]">esc</kbd>{" "}
+              <kbd className="rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-1.5 py-0.5 font-mono text-[10px]">esc</kbd>{" "}
               close
             </span>
             {trimmed && visible.length > 0 && (

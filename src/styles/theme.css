@@ -1,30 +1,32 @@
 @custom-variant dark (&:is(.dark *));
 
+/* Gray family: Tailwind stone (warm) in both themes. Hex values are the
+   official Tailwind stone scale. */
 :root {
   --font-size: 16px;
   --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --foreground: #0c0a09; /* stone-950 */
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  --card-foreground: #0c0a09;
+  --popover: #ffffff;
+  --popover-foreground: #0c0a09;
+  --primary: #1c1917; /* stone-900 */
+  --primary-foreground: #fafaf9; /* stone-50 */
+  --secondary: #f5f5f4; /* stone-100 */
+  --secondary-foreground: #1c1917;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c; /* stone-500 */
+  --accent: #f5f5f4;
+  --accent-foreground: #1c1917;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.1);
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: #f5f5f4;
+  --switch-background: #d6d3d1; /* stone-300 */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
+  --ring: #a8a29e; /* stone-400 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -42,25 +44,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0c0a09; /* stone-950 */
+  --foreground: #fafaf9; /* stone-50 */
+  --card: #1c1917; /* stone-900: cards get a slight lift off the page */
+  --card-foreground: #fafaf9;
+  --popover: #1c1917;
+  --popover-foreground: #fafaf9;
+  --primary: #fafaf9;
+  --primary-foreground: #1c1917;
+  --secondary: #292524; /* stone-800 */
+  --secondary-foreground: #fafaf9;
+  --muted: #292524;
+  --muted-foreground: #a8a29e; /* stone-400 */
+  --accent: #292524;
+  --accent-foreground: #fafaf9;
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --border: #292524;
+  --input: #292524;
+  --ring: #57534e; /* stone-600 */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --chart-1: oklch(0.488 0.243 264.376);
@@ -136,11 +138,11 @@
   html {
     font-size: var(--font-size);
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: #d6d3d1 transparent; /* stone-300 */
   }
 
   html.dark {
-    scrollbar-color: #475569 transparent;
+    scrollbar-color: #57534e transparent; /* stone-600 */
   }
 
   h1 {

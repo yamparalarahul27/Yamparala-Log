@@ -59,7 +59,7 @@ export function TweetEmbed({ tweetId }: { tweetId: string }) {
       {visible ? (
         <div ref={containerRef} />
       ) : (
-        <div className="min-h-[120px] animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div className="min-h-[120px] animate-pulse rounded-lg bg-stone-100 dark:bg-stone-800" />
       )}
     </div>
   );

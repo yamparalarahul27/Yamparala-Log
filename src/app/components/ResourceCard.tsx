@@ -5,6 +5,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { cn } from "@/app/components/ui/utils";
+import { recordOpen } from "@/utils/recent-opens";
 import { ArrowUpRight, CalendarDays, Clock, Pencil, Trash2, User } from "lucide-react";
 
 type ResourceCardProps = {
@@ -27,21 +28,21 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
 
   return (
     <Card
-      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-slate-200 dark:border-slate-700 shadow-sm break-inside-avoid")}
+      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-stone-200 dark:border-stone-700 shadow-sm break-inside-avoid")}
     >
       {tweetId ? (
         // Reserve a pessimistic 400px so the iframe widget can render without
         // pushing siblings down. Twitter's widget self-sizes, so some shift
         // remains for tweets that are very tall or very short.
-        <div className="min-h-[400px] border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2">
+        <div className="min-h-[400px] border-b border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-800 px-3 py-2">
           <TweetEmbed tweetId={tweetId} />
         </div>
       ) : resource.imageUrl ? (
-        <div className="border-b border-slate-100 dark:border-slate-800">
+        <div className="border-b border-stone-100 dark:border-stone-800">
           <img
             src={proxyImage(resource.imageUrl) ?? resource.imageUrl}
             alt=""
-            className="w-full bg-slate-100 dark:bg-slate-800 object-cover"
+            className="w-full bg-stone-100 dark:bg-stone-800 object-cover dark:brightness-90 dark:saturate-90"
             style={{ aspectRatio: imageAspectRatio }}
             loading="lazy"
             decoding="async"
@@ -62,7 +63,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              <Badge variant="secondary" className="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200">
                 {resource.category}
               </Badge>
               {resource.toolSubcategory && (
@@ -70,7 +71,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
                   {resource.toolSubcategory}
                 </Badge>
               )}
-              <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+              <Badge variant="outline" className="border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
                 {resource.source}
               </Badge>
               {resource.tags && resource.tags.length > 0 && (
@@ -81,7 +82,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
                     </Badge>
                   ))}
                   {resource.tags.length > 3 && (
-                    <Badge variant="secondary" className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <Badge variant="secondary" className="bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
                       +{resource.tags.length - 3}
                     </Badge>
                   )}
@@ -90,8 +91,8 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-50 text-balance">{resource.title}</h2>
-              <p className="truncate text-sm text-slate-500 dark:text-slate-400">{getHostname(resource.url)}</p>
+              <h2 className="text-xl font-semibold text-stone-950 dark:text-stone-50 text-balance">{resource.title}</h2>
+              <p className="truncate text-sm text-stone-500 dark:text-stone-400">{getHostname(resource.url)}</p>
             </div>
           </div>
 
@@ -117,19 +118,19 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
           )}
         </div>
 
-        <p className="flex-1 text-sm leading-6 text-slate-600 dark:text-slate-300 text-pretty">
+        <p className="flex-1 text-sm leading-6 text-stone-600 dark:text-stone-300 text-pretty">
           {resource.notes || resource.description || "No note yet. Open the link to revisit the original resource."}
         </p>
 
         {resource.author && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
             <User className="size-3" />
             <span>{resource.author}</span>
           </div>
         )}
 
         <div className="flex items-center justify-between gap-3 pt-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400 tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500 dark:text-stone-400 tabular-nums">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="size-4" />
               <span>Saved {formatSavedAt(resource.savedAt)}</span>
@@ -143,7 +144,19 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
           </div>
 
           <Button asChild variant="outline" className="gap-2">
-            <a href={resource.url} target="_blank" rel="noreferrer">
+            <a
+              href={resource.url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() =>
+                recordOpen({
+                  id: resource.id,
+                  title: resource.title,
+                  url: resource.url,
+                  category: resource.category,
+                })
+              }
+            >
               Open
               <ArrowUpRight className="size-4" />
             </a>

@@ -6,6 +6,7 @@ export interface Resource {
   toolSubcategory: "Dev tool" | "UX tool" | null;
   source: string;
   notes: string;
+  task: string;
   imageUrl: string | null;
   imageWidth: number | null;
   imageHeight: number | null;
