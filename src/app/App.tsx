@@ -6,7 +6,7 @@ export default function App() {
   return (
     <div
       className="relative min-h-dvh bg-center bg-cover bg-no-repeat"
-      style={{ backgroundImage: "url('/images/Wallpaper.png')" }}
+      style={{ backgroundImage: "url('/images/wallpaper.jpg')" }}
     >
       {/* Dark scrim: darkens the light wallpaper for readability in dark mode. */}
       <div className="pointer-events-none absolute inset-0 dark:bg-background/85" />
