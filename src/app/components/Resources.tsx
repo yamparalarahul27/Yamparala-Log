@@ -13,6 +13,7 @@ import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { resourceToGalleryItem } from "@/app/components/gallery-utils";
 import { useResources } from "@/app/hooks/useResources";
+import { useResponsiveColumns } from "@/app/hooks/useResponsiveColumns";
 
 const CanvasGallery = lazy(() => import("@/app/components/CanvasGallery"));
 import {
@@ -166,6 +167,16 @@ export function Resources() {
     const leftTime = new Date(left.savedAt).getTime();
     const rightTime = new Date(right.savedAt).getTime();
     return sortBy === "newest" ? rightTime - leftTime : leftTime - rightTime;
+  });
+
+  // Cards are assigned to a column by position (i % columns), not by height,
+  // so a card growing never moves another card to a different column — only
+  // pushes down its own. Unlike CSS `columns-*`, which rebalances every
+  // column whenever any card's height changes.
+  const columns = useResponsiveColumns();
+  const columnBuckets: Resource[][] = Array.from({ length: columns }, () => []);
+  filteredResources.forEach((resource, index) => {
+    columnBuckets[index % columns].push(resource);
   });
 
   const handleOpenCreate = () => {
@@ -584,15 +595,19 @@ export function Resources() {
             </Card>
           ) : (
             <>
-              <div className="columns-1 gap-4 space-y-4 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5">
-                {filteredResources.map((resource) => (
-                  <ResourceCard
-                    key={resource.id}
-                    resource={resource}
-                    isAdmin={isAdmin}
-                    onEdit={handleOpenEdit}
-                    onDelete={handleRequestDelete}
-                  />
+              <div className="flex gap-4">
+                {columnBuckets.map((bucket, columnIndex) => (
+                  <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
+                    {bucket.map((resource) => (
+                      <ResourceCard
+                        key={resource.id}
+                        resource={resource}
+                        isAdmin={isAdmin}
+                        onEdit={handleOpenEdit}
+                        onDelete={handleRequestDelete}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
               <div ref={sentinelRef} className="py-6 text-center text-sm text-stone-500 dark:text-stone-400">

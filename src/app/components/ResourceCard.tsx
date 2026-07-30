@@ -28,7 +28,7 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
 
   return (
     <Card
-      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-stone-200 dark:border-stone-700 shadow-sm break-inside-avoid")}
+      className={cn("flex flex-col gap-0 overflow-hidden rounded-3xl border-stone-200 dark:border-stone-700 shadow-sm")}
     >
       {tweetId ? (
         // Reserve a pessimistic 400px so the iframe widget can render without
