@@ -3,12 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/services/api-client";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
-import { AdminGate } from "@/app/components/AdminGate";
 import { InboxView } from "@/app/components/InboxView";
 import { ResourceCard } from "@/app/components/ResourceCard";
 import { SearchModal } from "@/app/components/SearchModal";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { FilterPopover, type SortValue } from "@/app/components/FilterPopover";
+import {
+  ResourcesToolbar,
+  type TabValue,
+  type ViewMode,
+} from "@/app/components/ResourcesToolbar";
+import { type SortValue } from "@/app/components/FilterPopover";
 import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { resourceToGalleryItem } from "@/app/components/gallery-utils";
@@ -28,27 +31,10 @@ import {
 } from "@/app/components/ui/alert-dialog";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import {
-  ArrowUpRight,
-  FolderOpen,
-  GalleryHorizontalEnd,
-  LayoutGrid,
-  List,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ArrowUpRight, FolderOpen, Plus } from "lucide-react";
 
-const SHOW_GALLERY_VIEW_TRIGGER = false;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-type TabValue = "resources" | "this-week" | "tasks" | "inbox";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -76,7 +62,7 @@ export function Resources() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
   const [activeTab, setActiveTab] = useState<TabValue>("resources");
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "gallery">("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const activeSearch = query.trim();
 
   // List view loads every resource (lean payload) in one shot. Enabled only when
@@ -260,132 +246,32 @@ export function Resources() {
     <>
       <main className="min-h-dvh">
         <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-2">
-            <div className="hidden gap-2 sm:flex">
-              <Button
-                variant={activeTab === "resources" ? "default" : "outline"}
-                onClick={() => setActiveTab("resources")}
-              >
-                Resources
-              </Button>
-              <Button
-                variant={activeTab === "this-week" ? "default" : "outline"}
-                onClick={() => setActiveTab("this-week")}
-              >
-                This Week
-              </Button>
-              <Button
-                variant={activeTab === "tasks" ? "default" : "outline"}
-                onClick={() => setActiveTab("tasks")}
-              >
-                Tasks
-              </Button>
-              <Button
-                variant={activeTab === "inbox" ? "default" : "outline"}
-                className="gap-2"
-                onClick={() => setActiveTab("inbox")}
-              >
-                Inbox
-                {inboxRows.length > 0 && (
-                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                    {inboxRows.length}
-                  </span>
-                )}
-              </Button>
-            </div>
-            <div className="sm:hidden">
-              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-                <SelectTrigger aria-label="Switch view" className="min-w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resources">Resources</SelectItem>
-                  <SelectItem value="this-week">This Week</SelectItem>
-                  <SelectItem value="tasks">Tasks</SelectItem>
-                  <SelectItem value="inbox">Inbox</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button
-                variant="outline"
-                className="min-w-0 gap-2"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search resources"
-              >
-                <Search className="size-4" />
-                <span className="hidden max-w-[12rem] truncate sm:inline">
-                  {activeSearch || "Search"}
-                </span>
-                <kbd className="hidden rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-[10px] text-stone-500 dark:text-stone-400 sm:inline">
-                  /
-                </kbd>
-              </Button>
-              {activeTab !== "tasks" && activeTab !== "inbox" && (
-                <FilterPopover
-                  categories={categories}
-                  sources={sources}
-                  categoryFilter={categoryFilter}
-                  sourceFilter={sourceFilter}
-                  sortBy={sortBy}
-                  onCategoryChange={setCategoryFilter}
-                  onSourceChange={setSourceFilter}
-                  onSortChange={setSortBy}
-                  onClear={() => {
-                    setCategoryFilter("all");
-                    setSourceFilter("all");
-                    setSortBy("newest");
-                  }}
-                />
-              )}
-              {isAdmin && (
-                <Button
-                  className="gap-2"
-                  onClick={handleOpenCreate}
-                  aria-label="Save resource"
-                >
-                  <Plus className="size-4" />
-                  <span className="hidden sm:inline">Save resource</span>
-                </Button>
-              )}
-              <AdminGate
-                isAdmin={isAdmin}
-                onUnlock={() => setIsAdmin(true)}
-                onLock={() => setIsAdmin(false)}
-              />
-              {activeTab !== "tasks" && activeTab !== "inbox" && (
-                <div className="flex gap-1">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="icon"
-                    aria-label="Grid view"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <LayoutGrid className="size-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="icon"
-                    aria-label="List view"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="size-4" />
-                  </Button>
-                  {SHOW_GALLERY_VIEW_TRIGGER && (
-                    <Button
-                      variant={viewMode === "gallery" ? "default" : "ghost"}
-                      size="icon"
-                      aria-label="Gallery view"
-                      onClick={() => setViewMode("gallery")}
-                    >
-                      <GalleryHorizontalEnd className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <ResourcesToolbar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            inboxCount={inboxRows.length}
+            activeSearch={activeSearch}
+            onOpenSearch={() => setSearchOpen(true)}
+            categories={categories}
+            sources={sources}
+            categoryFilter={categoryFilter}
+            sourceFilter={sourceFilter}
+            sortBy={sortBy}
+            onCategoryChange={setCategoryFilter}
+            onSourceChange={setSourceFilter}
+            onSortChange={setSortBy}
+            onClearFilters={() => {
+              setCategoryFilter("all");
+              setSourceFilter("all");
+              setSortBy("newest");
+            }}
+            isAdmin={isAdmin}
+            onUnlockAdmin={() => setIsAdmin(true)}
+            onLockAdmin={() => setIsAdmin(false)}
+            onOpenCreate={handleOpenCreate}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
 
           {activeTab === "inbox" ? (
             <InboxView
