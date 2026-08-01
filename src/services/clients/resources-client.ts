@@ -35,6 +35,7 @@ interface ResourceRow {
   language: string | null;
   reading_time_minutes: number | null;
   task_done: boolean | null;
+  is_favourite: boolean | null;
   normalized_url: string | null;
 }
 
@@ -73,6 +74,9 @@ function toResource(row: Partial<ResourceRow> & Record<string, unknown>): Resour
     language: (row.language as string) ?? null,
     readingTimeMinutes: (row.reading_time_minutes as number) ?? null,
     taskDone: Boolean(row.task_done ?? false),
+    // Like `task`, written only through its own endpoint (setFavourite) and
+    // omitted from toRow so a web save/edit can never clear a star.
+    isFavourite: Boolean(row.is_favourite ?? false),
   };
 }
 
@@ -241,6 +245,32 @@ export class ResourcesClient {
       {
         method: "PATCH",
         body: JSON.stringify(patch),
+      },
+    );
+  }
+
+  // Every favourite, not just the ones the infinite-scroll cursor has reached —
+  // a Favourites tab that only knew about loaded rows would hide older stars.
+  // No cursor loop here: favourites are a curated slice, well under the 1000-row cap.
+  async getFavourites(): Promise<Resource[]> {
+    const params = new URLSearchParams();
+    params.set("select", "*");
+    params.set("is_favourite", "is.true");
+    params.set("order", "saved_at.desc");
+    const rows = await supabaseRequest<ResourceRow[]>(
+      `/${SUPABASE_TABLES.RESOURCES}?${params.toString()}`,
+    );
+    return rows.map(toResource);
+  }
+
+  // Patches the single column, for the same reason as applyEnrichment: toRow()
+  // builds a full row and would clobber url-derived fields on partial input.
+  async setFavourite(id: string, isFavourite: boolean): Promise<void> {
+    await supabaseRequest<void>(
+      `/${SUPABASE_TABLES.RESOURCES}?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ is_favourite: isFavourite }),
       },
     );
   }

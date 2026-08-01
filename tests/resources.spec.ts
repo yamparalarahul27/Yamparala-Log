@@ -9,6 +9,7 @@ type ResourceRecord = {
   source: string;
   notes: string;
   saved_at: string;
+  is_favourite?: boolean;
 };
 
 async function mockResourceApi(page: Page, initialResources: ResourceRecord[]) {
@@ -34,6 +35,10 @@ async function mockResourceApi(page: Page, initialResources: ResourceRecord[]) {
           );
         }
       }
+      // The Favourites tab asks for is_favourite=is.true.
+      if (url.searchParams.get("is_favourite") === "is.true") {
+        rows = rows.filter((row) => row.is_favourite === true);
+      }
       const cursor = url.searchParams.get("saved_at");
       if (cursor?.startsWith("lt.")) {
         const value = cursor.slice(3);
@@ -56,10 +61,13 @@ async function mockResourceApi(page: Page, initialResources: ResourceRecord[]) {
     }
 
     if (method === "PATCH") {
-      const payload = route.request().postDataJSON() as Omit<ResourceRecord, "id">;
+      // Merge rather than replace: setFavourite / applyEnrichment send a partial
+      // row, and PostgREST leaves the untouched columns alone.
+      const payload = route.request().postDataJSON() as Partial<ResourceRecord>;
       const filter = url.searchParams.get("id") ?? "";
       const id = filter.replace(/^eq\./, "");
-      const updated = { ...payload, id };
+      const existing = resources.find((resource) => resource.id === id);
+      const updated = { ...existing, ...payload, id } as ResourceRecord;
       resources = resources.map((resource) => (resource.id === id ? updated : resource));
       await route.fulfill({ json: [updated] });
       return;
@@ -192,4 +200,48 @@ test("filters, edits, and deletes resources", async ({ page }) => {
   await page.getByRole("button", { name: "Delete resource" }).click();
   await expect(page.getByRole("heading", { name: "Aceternity UI" })).not.toBeVisible();
   await expect(page.getByRole("heading", { name: "React docs" })).toBeVisible();
+});
+
+test("stars a resource and surfaces it in the Favourites tab", async ({ page }) => {
+  await mockResourceApi(page, [
+    {
+      id: "1",
+      title: "Aceternity components",
+      url: "https://ui.aceternity.com",
+      category: "Inspiration",
+      tool_subcategory: null,
+      source: "Aceternity",
+      notes: "Useful visual reference ideas.",
+      saved_at: "2026-03-20T10:00:00.000Z",
+    },
+    {
+      id: "2",
+      title: "React docs",
+      url: "https://react.dev",
+      category: "Docs",
+      tool_subcategory: null,
+      source: "React",
+      notes: "Official docs and API references.",
+      saved_at: "2026-03-19T10:00:00.000Z",
+    },
+  ]);
+
+  await page.goto("/");
+
+  // Starring is admin-only, same UI gate as edit / delete.
+  await expect(page.getByLabel("Add Aceternity components to favourites")).toHaveCount(0);
+  await page.getByRole("button", { name: "Admin settings" }).click();
+  await page.getByLabel("Admin passcode").fill("0125k");
+  await page.getByRole("button", { name: "Unlock" }).click();
+
+  await page.getByLabel("Add Aceternity components to favourites").click();
+  await expect(page.getByLabel("Remove Aceternity components from favourites")).toBeVisible();
+
+  await page.getByRole("button", { name: "Favourites", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Aceternity components" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "React docs" })).not.toBeVisible();
+
+  // Un-starring from inside the tab drops the card out of the list.
+  await page.getByLabel("Remove Aceternity components from favourites").click();
+  await expect(page.getByRole("heading", { name: "Nothing starred yet." })).toBeVisible();
 });

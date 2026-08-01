@@ -5,6 +5,8 @@ import { apiClient } from "@/services/api-client";
 
 const PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE_MS = 250;
+// Shared with the Favourites tab's useQuery in Resources.tsx.
+export const FAVOURITES_QUERY_KEY = ["resources", "favourites"] as const;
 
 type ResourcesQueryKey = readonly ["resources", { search: string | null }];
 type ResourcesInfiniteData = InfiniteData<Resource[], string | undefined>;
@@ -94,6 +96,33 @@ export function useResources(options: UseResourcesOptions = {}) {
     writeCache((current) => current.filter((resource) => resource.id !== id));
   };
 
+  // Optimistic: the star fills immediately, then rolls back if the PATCH fails.
+  // Both caches are patched — the paged grid and the Favourites tab's own list —
+  // so the star responds instantly on whichever tab the click came from. The
+  // invalidate afterwards is what actually drops an un-starred row out of the list.
+  const toggleFavourite = async (id: string, isFavourite: boolean) => {
+    const patch = (value: boolean) => (current: Resource[]) =>
+      current.map((resource) =>
+        resource.id === id ? { ...resource, isFavourite: value } : resource,
+      );
+
+    const applyLocally = (value: boolean) => {
+      writeCache(patch(value));
+      queryClient.setQueryData<Resource[]>(FAVOURITES_QUERY_KEY, (current) =>
+        current ? patch(value)(current) : current,
+      );
+    };
+
+    applyLocally(isFavourite);
+    try {
+      await apiClient.resources.setFavourite(id, isFavourite);
+      void queryClient.invalidateQueries({ queryKey: FAVOURITES_QUERY_KEY });
+    } catch (error) {
+      applyLocally(!isFavourite);
+      throw error;
+    }
+  };
+
   const reload = useCallback(() => {
     void refetch();
   }, [refetch]);
@@ -113,6 +142,7 @@ export function useResources(options: UseResourcesOptions = {}) {
     createResource,
     updateResource,
     deleteResource,
+    toggleFavourite,
     hasNextPage: Boolean(hasNextPage),
     isFetchingNextPage,
     loadMore,

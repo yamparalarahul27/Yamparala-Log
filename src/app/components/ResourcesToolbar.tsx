@@ -2,6 +2,7 @@ import { AdminGate } from "@/app/components/AdminGate";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { FilterPopover, type SortValue } from "@/app/components/FilterPopover";
 import { Button } from "@/app/components/ui/button";
+import { cn } from "@/app/components/ui/utils";
 import {
   Select,
   SelectContent,
@@ -15,11 +16,12 @@ import {
   List,
   Plus,
   Search,
+  Star,
 } from "lucide-react";
 
 const SHOW_GALLERY_VIEW_TRIGGER = false;
 
-export type TabValue = "resources" | "this-week" | "tasks" | "inbox";
+export type TabValue = "resources" | "this-week" | "tasks" | "inbox" | "favourites";
 export type ViewMode = "grid" | "list" | "gallery";
 
 interface ResourcesToolbarProps {
@@ -67,7 +69,10 @@ export function ResourcesToolbar({
   viewMode,
   onViewModeChange,
 }: ResourcesToolbarProps) {
-  const showGridControls = activeTab !== "tasks" && activeTab !== "inbox";
+  // Favourites joins tasks/inbox in skipping filters and the view switcher: it
+  // renders its own curated grid, small enough that narrowing it adds nothing.
+  const showGridControls =
+    activeTab !== "tasks" && activeTab !== "inbox" && activeTab !== "favourites";
 
   return (
     <div className="flex items-center justify-between gap-2">
@@ -102,6 +107,16 @@ export function ResourcesToolbar({
             </span>
           )}
         </Button>
+        <Button
+          variant={activeTab === "favourites" ? "default" : "outline"}
+          className="gap-2"
+          onClick={() => onTabChange("favourites")}
+        >
+          <Star
+            className={cn("size-4", activeTab !== "favourites" && "fill-amber-400 text-amber-500")}
+          />
+          Favourites
+        </Button>
       </div>
       <div className="sm:hidden">
         <Select value={activeTab} onValueChange={(value) => onTabChange(value as TabValue)}>
@@ -113,6 +128,7 @@ export function ResourcesToolbar({
             <SelectItem value="this-week">This Week</SelectItem>
             <SelectItem value="tasks">Tasks</SelectItem>
             <SelectItem value="inbox">Inbox</SelectItem>
+            <SelectItem value="favourites">Favourites</SelectItem>
           </SelectContent>
         </Select>
       </div>

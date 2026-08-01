@@ -6,16 +6,23 @@ import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { cn } from "@/app/components/ui/utils";
 import { recordOpen } from "@/utils/recent-opens";
-import { ArrowUpRight, CalendarDays, Clock, Pencil, Trash2, User } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Clock, Pencil, Star, Trash2, User } from "lucide-react";
 
 type ResourceCardProps = {
   resource: Resource;
   isAdmin: boolean;
   onEdit: (resource: Resource) => void;
   onDelete: (resource: Resource) => void;
+  onToggleFavourite: (resource: Resource) => void;
 };
 
-export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCardProps) {
+export function ResourceCard({
+  resource,
+  isAdmin,
+  onEdit,
+  onDelete,
+  onToggleFavourite,
+}: ResourceCardProps) {
   const tweetId = getTweetId(resource.url);
   // Reserve the card's image area at the OG-supplied aspect ratio so the lazy
   // <img> slots in without shifting anything below it. Falls back to OG's
@@ -96,26 +103,56 @@ export function ResourceCard({ resource, isAdmin, onEdit, onDelete }: ResourceCa
             </div>
           </div>
 
-          {isAdmin && (
-            <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {isAdmin ? (
               <Button
-                aria-label={`Edit ${resource.title}`}
+                aria-label={
+                  resource.isFavourite
+                    ? `Remove ${resource.title} from favourites`
+                    : `Add ${resource.title} to favourites`
+                }
+                aria-pressed={resource.isFavourite}
                 variant="ghost"
                 size="icon"
-                onClick={() => onEdit(resource)}
+                onClick={() => onToggleFavourite(resource)}
               >
-                <Pencil className="size-4" />
+                <Star
+                  className={cn(
+                    "size-4",
+                    resource.isFavourite && "fill-amber-400 text-amber-500",
+                  )}
+                />
               </Button>
-              <Button
-                aria-label={`Delete ${resource.title}`}
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(resource)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          )}
+            ) : (
+              // Visitors can't toggle, but a filled star still reads as curation.
+              resource.isFavourite && (
+                <Star
+                  aria-label="Favourite"
+                  className="size-4 shrink-0 fill-amber-400 text-amber-500"
+                />
+              )
+            )}
+            {isAdmin && (
+              <>
+                <Button
+                  aria-label={`Edit ${resource.title}`}
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(resource)}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  aria-label={`Delete ${resource.title}`}
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(resource)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         <p className="flex-1 text-sm leading-6 text-stone-600 dark:text-stone-300 text-pretty">
