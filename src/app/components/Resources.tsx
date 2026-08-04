@@ -3,16 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/services/api-client";
 import { AddResourceDialog } from "@/app/components/AddResourceDialog";
-import { AdminGate } from "@/app/components/AdminGate";
 import { InboxView } from "@/app/components/InboxView";
 import { ResourceCard } from "@/app/components/ResourceCard";
 import { SearchModal } from "@/app/components/SearchModal";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { FilterPopover, type SortValue } from "@/app/components/FilterPopover";
+import {
+  ResourcesToolbar,
+  type TabValue,
+  type ViewMode,
+} from "@/app/components/ResourcesToolbar";
+import { type SortValue } from "@/app/components/FilterPopover";
 import { Resource } from "@/app/components/types";
 import { getHostname } from "@/app/components/resource-format";
 import { resourceToGalleryItem } from "@/app/components/gallery-utils";
-import { useResources } from "@/app/hooks/useResources";
+import { FAVOURITES_QUERY_KEY, useResources } from "@/app/hooks/useResources";
 import { useResponsiveColumns } from "@/app/hooks/useResponsiveColumns";
 
 const CanvasGallery = lazy(() => import("@/app/components/CanvasGallery"));
@@ -28,31 +31,46 @@ import {
 } from "@/app/components/ui/alert-dialog";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import {
-  ArrowUpRight,
-  FolderOpen,
-  GalleryHorizontalEnd,
-  LayoutGrid,
-  List,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ArrowUpRight, FolderOpen, Plus, Star } from "lucide-react";
 
-const SHOW_GALLERY_VIEW_TRIGGER = false;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-type TabValue = "resources" | "this-week" | "tasks" | "inbox";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+interface CardGridProps {
+  resources: Resource[];
+  columns: number;
+  isAdmin: boolean;
+  onEdit: (resource: Resource) => void;
+  onDelete: (resource: Resource) => void;
+  onToggleFavourite: (resource: Resource) => void;
+}
+
+// Cards are assigned to a column by position (i % columns), not by height, so a
+// card growing never moves another card to a different column — only pushes down
+// its own. Unlike CSS `columns-*`, which rebalances every column whenever any
+// card's height changes.
+function CardGrid({ resources, columns, ...handlers }: CardGridProps) {
+  const columnBuckets: Resource[][] = Array.from({ length: columns }, () => []);
+  resources.forEach((resource, index) => {
+    columnBuckets[index % columns].push(resource);
+  });
+
+  return (
+    <div className="flex gap-4">
+      {columnBuckets.map((bucket, columnIndex) => (
+        <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
+          {bucket.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} {...handlers} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Resources() {
@@ -67,6 +85,7 @@ export function Resources() {
     createResource,
     updateResource,
     deleteResource,
+    toggleFavourite,
     hasNextPage,
     isFetchingNextPage,
     loadMore,
@@ -76,7 +95,7 @@ export function Resources() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("newest");
   const [activeTab, setActiveTab] = useState<TabValue>("resources");
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "gallery">("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const activeSearch = query.trim();
 
   // List view loads every resource (lean payload) in one shot. Enabled only when
@@ -102,6 +121,18 @@ export function Resources() {
     queryKey: ["resources", "inbox"],
     queryFn: () => apiClient.resources.getInbox(),
     enabled: activeTab === "inbox",
+    staleTime: 60_000,
+  });
+  // Favourites gets its own fetch rather than filtering `resources`, which only
+  // holds the pages infinite scroll has reached — an older star would be missing.
+  const {
+    data: favourites = [],
+    isLoading: favouritesLoading,
+    error: favouritesError,
+  } = useQuery({
+    queryKey: FAVOURITES_QUERY_KEY,
+    queryFn: () => apiClient.resources.getFavourites(),
+    enabled: activeTab === "favourites",
     staleTime: 60_000,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -169,15 +200,7 @@ export function Resources() {
     return sortBy === "newest" ? rightTime - leftTime : leftTime - rightTime;
   });
 
-  // Cards are assigned to a column by position (i % columns), not by height,
-  // so a card growing never moves another card to a different column — only
-  // pushes down its own. Unlike CSS `columns-*`, which rebalances every
-  // column whenever any card's height changes.
   const columns = useResponsiveColumns();
-  const columnBuckets: Resource[][] = Array.from({ length: columns }, () => []);
-  filteredResources.forEach((resource, index) => {
-    columnBuckets[index % columns].push(resource);
-  });
 
   const handleOpenCreate = () => {
     setEditingResource(null);
@@ -194,6 +217,16 @@ export function Resources() {
   const handleRequestDelete = (resource: Resource) => {
     setDeleteError(null);
     setResourceToDelete(resource);
+  };
+
+  const handleToggleFavourite = async (resource: Resource) => {
+    try {
+      await toggleFavourite(resource.id, !resource.isFavourite);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not update that favourite.";
+      toast.error(message);
+    }
   };
 
   const handleCompleteTask = async (resource: Resource) => {
@@ -260,134 +293,84 @@ export function Resources() {
     <>
       <main className="min-h-dvh">
         <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-2">
-            <div className="hidden gap-2 sm:flex">
-              <Button
-                variant={activeTab === "resources" ? "default" : "outline"}
-                onClick={() => setActiveTab("resources")}
-              >
-                Resources
-              </Button>
-              <Button
-                variant={activeTab === "this-week" ? "default" : "outline"}
-                onClick={() => setActiveTab("this-week")}
-              >
-                This Week
-              </Button>
-              <Button
-                variant={activeTab === "tasks" ? "default" : "outline"}
-                onClick={() => setActiveTab("tasks")}
-              >
-                Tasks
-              </Button>
-              <Button
-                variant={activeTab === "inbox" ? "default" : "outline"}
-                className="gap-2"
-                onClick={() => setActiveTab("inbox")}
-              >
-                Inbox
-                {inboxRows.length > 0 && (
-                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                    {inboxRows.length}
-                  </span>
-                )}
-              </Button>
-            </div>
-            <div className="sm:hidden">
-              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-                <SelectTrigger aria-label="Switch view" className="min-w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resources">Resources</SelectItem>
-                  <SelectItem value="this-week">This Week</SelectItem>
-                  <SelectItem value="tasks">Tasks</SelectItem>
-                  <SelectItem value="inbox">Inbox</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button
-                variant="outline"
-                className="min-w-0 gap-2"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search resources"
-              >
-                <Search className="size-4" />
-                <span className="hidden max-w-[12rem] truncate sm:inline">
-                  {activeSearch || "Search"}
-                </span>
-                <kbd className="hidden rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-[10px] text-stone-500 dark:text-stone-400 sm:inline">
-                  /
-                </kbd>
-              </Button>
-              {activeTab !== "tasks" && activeTab !== "inbox" && (
-                <FilterPopover
-                  categories={categories}
-                  sources={sources}
-                  categoryFilter={categoryFilter}
-                  sourceFilter={sourceFilter}
-                  sortBy={sortBy}
-                  onCategoryChange={setCategoryFilter}
-                  onSourceChange={setSourceFilter}
-                  onSortChange={setSortBy}
-                  onClear={() => {
-                    setCategoryFilter("all");
-                    setSourceFilter("all");
-                    setSortBy("newest");
-                  }}
-                />
-              )}
-              {isAdmin && (
-                <Button
-                  className="gap-2"
-                  onClick={handleOpenCreate}
-                  aria-label="Save resource"
-                >
-                  <Plus className="size-4" />
-                  <span className="hidden sm:inline">Save resource</span>
-                </Button>
-              )}
-              <AdminGate
-                isAdmin={isAdmin}
-                onUnlock={() => setIsAdmin(true)}
-                onLock={() => setIsAdmin(false)}
-              />
-              {activeTab !== "tasks" && activeTab !== "inbox" && (
-                <div className="flex gap-1">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="icon"
-                    aria-label="Grid view"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <LayoutGrid className="size-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="icon"
-                    aria-label="List view"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <List className="size-4" />
-                  </Button>
-                  {SHOW_GALLERY_VIEW_TRIGGER && (
-                    <Button
-                      variant={viewMode === "gallery" ? "default" : "ghost"}
-                      size="icon"
-                      aria-label="Gallery view"
-                      onClick={() => setViewMode("gallery")}
-                    >
-                      <GalleryHorizontalEnd className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <ResourcesToolbar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            inboxCount={inboxRows.length}
+            activeSearch={activeSearch}
+            onOpenSearch={() => setSearchOpen(true)}
+            categories={categories}
+            sources={sources}
+            categoryFilter={categoryFilter}
+            sourceFilter={sourceFilter}
+            sortBy={sortBy}
+            onCategoryChange={setCategoryFilter}
+            onSourceChange={setSourceFilter}
+            onSortChange={setSortBy}
+            onClearFilters={() => {
+              setCategoryFilter("all");
+              setSourceFilter("all");
+              setSortBy("newest");
+            }}
+            isAdmin={isAdmin}
+            onUnlockAdmin={() => setIsAdmin(true)}
+            onLockAdmin={() => setIsAdmin(false)}
+            onOpenCreate={handleOpenCreate}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
 
-          {activeTab === "inbox" ? (
+          {activeTab === "favourites" ? (
+            favouritesError ? (
+              <Card className="rounded-3xl border-red-200 bg-red-50 p-6 shadow-sm">
+                <p className="text-sm text-red-700">
+                  {favouritesError instanceof Error
+                    ? favouritesError.message
+                    : "Could not load your favourites."}
+                </p>
+              </Card>
+            ) : favouritesLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Card
+                    key={index}
+                    className="rounded-3xl border-stone-200 dark:border-stone-700 p-5 shadow-sm"
+                  >
+                    <div className="space-y-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-4/5" />
+                      <Skeleton className="h-16 w-full" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : favourites.length === 0 ? (
+              <Card className="rounded-3xl border-dashed border-stone-300 dark:border-stone-600 p-10 text-center shadow-sm">
+                <div className="mx-auto max-w-lg space-y-3">
+                  <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+                    <Star className="size-5 fill-amber-400 text-amber-500" />
+                  </div>
+                  <h2 className="text-2xl font-semibold text-stone-950 dark:text-stone-50 text-balance">
+                    Nothing starred yet.
+                  </h2>
+                  <p className="text-stone-600 dark:text-stone-300 text-pretty">
+                    {isAdmin
+                      ? "Tap the star on any card to keep it here."
+                      : "Unlock admin to start starring the resources worth coming back to."}
+                  </p>
+                </div>
+              </Card>
+            ) : (
+              <CardGrid
+                resources={favourites}
+                columns={columns}
+                isAdmin={isAdmin}
+                onEdit={handleOpenEdit}
+                onDelete={handleRequestDelete}
+                onToggleFavourite={handleToggleFavourite}
+              />
+            )
+          ) : activeTab === "inbox" ? (
             <InboxView
               rows={inboxRows}
               loading={inboxLoading}
@@ -595,21 +578,14 @@ export function Resources() {
             </Card>
           ) : (
             <>
-              <div className="flex gap-4">
-                {columnBuckets.map((bucket, columnIndex) => (
-                  <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
-                    {bucket.map((resource) => (
-                      <ResourceCard
-                        key={resource.id}
-                        resource={resource}
-                        isAdmin={isAdmin}
-                        onEdit={handleOpenEdit}
-                        onDelete={handleRequestDelete}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
+              <CardGrid
+                resources={filteredResources}
+                columns={columns}
+                isAdmin={isAdmin}
+                onEdit={handleOpenEdit}
+                onDelete={handleRequestDelete}
+                onToggleFavourite={handleToggleFavourite}
+              />
               <div ref={sentinelRef} className="py-6 text-center text-sm text-stone-500 dark:text-stone-400">
                 {isFetchingNextPage
                   ? "Loading more…"

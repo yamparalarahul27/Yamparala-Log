@@ -20,4 +20,5 @@ export interface Resource {
   language: string | null;
   readingTimeMinutes: number | null;
   taskDone: boolean;
+  isFavourite: boolean;
 }
