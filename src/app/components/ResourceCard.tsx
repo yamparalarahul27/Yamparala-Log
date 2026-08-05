@@ -104,7 +104,8 @@ export function ResourceCard({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {isAdmin ? (
+            {/* Favourites are admin-only; visitors see no star at all. */}
+            {isAdmin && (
               <Button
                 aria-label={
                   resource.isFavourite
@@ -123,14 +124,6 @@ export function ResourceCard({
                   )}
                 />
               </Button>
-            ) : (
-              // Visitors can't toggle, but a filled star still reads as curation.
-              resource.isFavourite && (
-                <Star
-                  aria-label="Favourite"
-                  className="size-4 shrink-0 fill-amber-400 text-amber-500"
-                />
-              )
             )}
             {isAdmin && (
               <>

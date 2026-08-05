@@ -89,34 +89,39 @@ export function ResourcesToolbar({
         >
           This Week
         </Button>
-        <Button
-          variant={activeTab === "tasks" ? "default" : "outline"}
-          onClick={() => onTabChange("tasks")}
-        >
-          Tasks
-        </Button>
-        <Button
-          variant={activeTab === "inbox" ? "default" : "outline"}
-          className="gap-2"
-          onClick={() => onTabChange("inbox")}
-        >
-          Inbox
-          {inboxCount > 0 && (
-            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-              {inboxCount}
-            </span>
-          )}
-        </Button>
-        <Button
-          variant={activeTab === "favourites" ? "default" : "outline"}
-          className="gap-2"
-          onClick={() => onTabChange("favourites")}
-        >
-          <Star
-            className={cn("size-4", activeTab !== "favourites" && "fill-amber-400 text-amber-500")}
-          />
-          Favourites
-        </Button>
+        {/* Tasks / Inbox / Favourites are admin workflow, hidden from visitors. */}
+        {isAdmin && (
+          <>
+            <Button
+              variant={activeTab === "tasks" ? "default" : "outline"}
+              onClick={() => onTabChange("tasks")}
+            >
+              Tasks
+            </Button>
+            <Button
+              variant={activeTab === "inbox" ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => onTabChange("inbox")}
+            >
+              Inbox
+              {inboxCount > 0 && (
+                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  {inboxCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={activeTab === "favourites" ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => onTabChange("favourites")}
+            >
+              <Star
+                className={cn("size-4", activeTab !== "favourites" && "fill-amber-400 text-amber-500")}
+              />
+              Favourites
+            </Button>
+          </>
+        )}
       </div>
       <div className="sm:hidden">
         <Select value={activeTab} onValueChange={(value) => onTabChange(value as TabValue)}>
@@ -126,9 +131,13 @@ export function ResourcesToolbar({
           <SelectContent>
             <SelectItem value="resources">Resources</SelectItem>
             <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="tasks">Tasks</SelectItem>
-            <SelectItem value="inbox">Inbox</SelectItem>
-            <SelectItem value="favourites">Favourites</SelectItem>
+            {isAdmin && (
+              <>
+                <SelectItem value="tasks">Tasks</SelectItem>
+                <SelectItem value="inbox">Inbox</SelectItem>
+                <SelectItem value="favourites">Favourites</SelectItem>
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
