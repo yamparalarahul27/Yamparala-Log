@@ -160,6 +160,14 @@ export function Resources() {
     return () => io.disconnect();
   }, [hasNextPage, loadMore]);
 
+  // Tasks / Inbox / Favourites are admin-only. If admin is locked while one of
+  // them is active, fall back to Resources so its hidden-tab view can't linger.
+  useEffect(() => {
+    if (!isAdmin && (activeTab === "tasks" || activeTab === "inbox" || activeTab === "favourites")) {
+      setActiveTab("resources");
+    }
+  }, [isAdmin, activeTab]);
+
   // "/" opens the search palette. Guarded against firing while another
   // dialog (add/edit, delete confirm) is already open.
   useEffect(() => {
